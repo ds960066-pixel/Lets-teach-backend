@@ -4,6 +4,8 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const Teacher = require("./models/Teacher");
 const Institute = require("./models/Institute");
+const Invite = require("./models/Invite");
+
 
 
 /* ---------- Firebase Admin Init ---------- */
@@ -194,6 +196,66 @@ app.get("/api/institute/:uid", async (req, res) => {
     });
   }
 });
+app.post("/api/invite/create", async (req, res) => {
+  try {
+    const { instituteUid, teacherUid } = req.body;
+
+    if (!instituteUid || !teacherUid) {
+      return res.status(400).json({
+        success: false,
+        message: "Institute UID and Teacher UID required",
+      });
+    }
+
+    const existingInvite = await Invite.findOne({
+      instituteUid,
+      teacherUid,
+    });
+
+    if (existingInvite) {
+      return res.status(400).json({
+        success: false,
+        message: "Invite already sent",
+      });
+    }
+
+    const invite = new Invite({
+      instituteUid,
+      teacherUid,
+    });
+
+    await invite.save();
+
+    res.json({
+      success: true,
+      message: "Invite sent successfully",
+      invite,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+app.get("/api/invite/teacher/:uid", async (req, res) => {
+  try {
+    const invites = await Invite.find({
+      teacherUid: req.params.uid,
+    });
+
+    res.json({
+      success: true,
+      invites,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 
 
 /* ---------- MongoDB ---------- */
