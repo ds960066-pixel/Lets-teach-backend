@@ -10,16 +10,18 @@ app.get("/", (req, res) => {
   res.send("Lets Teach Backend is Live 🚀");
 });
 
-
 app.get("/health", (req, res) => {
   res.send("Server is healthy ✅");
 });
+
 app.get("/api/test", (req, res) => {
   res.json({
     success: true,
     message: "Lets Teach API working 🚀"
   });
-  mongoose
+});
+
+mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log(err));
@@ -27,6 +29,8 @@ app.get("/api/test", (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
 
-});
-});
+
+
+
