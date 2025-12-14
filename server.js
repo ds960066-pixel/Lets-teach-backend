@@ -5,6 +5,7 @@ const admin = require("firebase-admin");
 const Teacher = require("./models/Teacher");
 const Institute = require("./models/Institute");
 const Invite = require("./models/Invite");
+const Message = require("./models/Message");
 
 
 
@@ -289,6 +290,59 @@ app.post("/api/invite/respond", async (req, res) => {
       success: true,
       message: `Invite ${status}`,
       invite,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+app.post("/api/chat/send", async (req, res) => {
+  try {
+    const { senderUid, receiverUid, text } = req.body;
+
+    if (!senderUid || !receiverUid || !text) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
+    }
+
+    const message = new Message({
+      senderUid,
+      receiverUid,
+      text,
+    });
+
+    await message.save();
+
+    res.json({
+      success: true,
+      message: "Message sent",
+      data: message,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+app.get("/api/chat/:uid1/:uid2", async (req, res) => {
+  try {
+    const { uid1, uid2 } = req.params;
+
+    const messages = await Message.find({
+      $or: [
+        { senderUid: uid1, receiverUid: uid2 },
+        { senderUid: uid2, receiverUid: uid1 },
+      ],
+    }).sort({ createdAt: 1 });
+
+    res.json({
+      success: true,
+      messages,
     });
   } catch (error) {
     res.status(500).json({
