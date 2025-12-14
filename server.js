@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const admin = require("firebase-admin");
+const Teacher = require("./models/Teacher");
 
 /* ---------- Firebase Admin Init ---------- */
 const serviceAccount = JSON.parse(
@@ -56,6 +57,74 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     res.status(401).json({
       success: false,
       message: "Invalid or expired token",
+    });
+  }
+});
+
+/* ---------- CREATE TEACHER PROFILE ---------- */
+app.post("/api/teacher/create", async (req, res) => {
+  try {
+    const { uid, name, phone, subject, city, experience } = req.body;
+
+    if (!uid || !name || !phone || !subject || !city) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be filled",
+      });
+    }
+
+    const existingTeacher = await Teacher.findOne({ uid });
+    if (existingTeacher) {
+      return res.status(400).json({
+        success: false,
+        message: "Teacher profile already exists",
+      });
+    }
+
+    const teacher = new Teacher({
+      uid,
+      name,
+      phone,
+      subject,
+      city,
+      experience,
+    });
+
+    await teacher.save();
+
+    res.json({
+      success: true,
+      message: "Teacher profile created successfully",
+      teacher,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+/* ---------- GET TEACHER PROFILE ---------- */
+app.get("/api/teacher/:uid", async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ uid: req.params.uid });
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      teacher,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 });
