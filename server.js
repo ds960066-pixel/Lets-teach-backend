@@ -255,6 +255,48 @@ app.get("/api/invite/teacher/:uid", async (req, res) => {
     });
   }
 });
+app.post("/api/invite/respond", async (req, res) => {
+  try {
+    const { inviteId, status } = req.body;
+
+    if (!inviteId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Invite ID and status required",
+      });
+    }
+
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const invite = await Invite.findById(inviteId);
+
+    if (!invite) {
+      return res.status(404).json({
+        success: false,
+        message: "Invite not found",
+      });
+    }
+
+    invite.status = status;
+    await invite.save();
+
+    res.json({
+      success: true,
+      message: `Invite ${status}`,
+      invite,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 
 
 
