@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const admin = require("firebase-admin");
 const Teacher = require("./models/Teacher");
+const Institute = require("./models/Institute");
+
 
 /* ---------- Firebase Admin Init ---------- */
 const serviceAccount = JSON.parse(
@@ -128,6 +130,71 @@ app.get("/api/teacher/:uid", async (req, res) => {
     });
   }
 });
+app.post("/api/institute/create", async (req, res) => {
+  try {
+    const { uid, name, phone, city, address, subjectsNeeded } = req.body;
+
+    if (!uid || !name || !phone || !city) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be filled",
+      });
+    }
+app.get("/api/institute/:uid", async (req, res) => {
+  try {
+    const institute = await Institute.findOne({ uid: req.params.uid });
+
+    if (!institute) {
+      return res.status(404).json({
+        success: false,
+        message: "Institute not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      institute,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+    const existingInstitute = await Institute.findOne({ uid });
+    if (existingInstitute) {
+      return res.status(400).json({
+        success: false,
+        message: "Institute profile already exists",
+      });
+    }
+
+    const institute = new Institute({
+      uid,
+      name,
+      phone,
+      city,
+      address,
+      subjectsNeeded,
+    });
+
+    await institute.save();
+
+    res.json({
+      success: true,
+      message: "Institute profile created successfully",
+      institute,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 
 /* ---------- MongoDB ---------- */
 mongoose
