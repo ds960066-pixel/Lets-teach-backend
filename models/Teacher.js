@@ -5,30 +5,31 @@ const teacherSchema = new mongoose.Schema(
     uid: {
       type: String,
       required: true,
-      unique: true, // Firebase UID
+      unique: true
     },
     name: {
       type: String,
-      required: true,
+      required: true
     },
     phone: {
       type: String,
-      required: true,
+      required: true
     },
     subject: {
       type: String,
-      required: true,
+      required: true
     },
     city: {
       type: String,
-      required: true,
+      required: true
     },
     experience: {
-      type: Number,
-      default: 0,
-    },
+      type: String
+    }
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model("Teacher", teacherSchema);
+
+  
