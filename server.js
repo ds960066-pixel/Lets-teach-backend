@@ -70,6 +70,22 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     });
   }
 });
+app.get("/api/debug/teachers", async (req, res) => {
+  try {
+    const teachers = await Teacher.find();
+    res.json({
+      success: true,
+      count: teachers.length,
+      teachers
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 
 /* ---------- TEACHER APIs ---------- */
 app.post("/api/teacher/create", async (req, res) => {
