@@ -8,6 +8,7 @@ const Institute = require("./models/Institute");
 const Invite = require("./models/Invite");
 const Message = require("./models/Message");
 const teacherRoutes = require("./routes/teacher");
+const inviteRoutes = require("./routes/invite");
 
 
 /* ---------- Firebase Admin Init ---------- */
@@ -26,6 +27,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/api/teacher", teacherRoutes);
+app.use("/api/invite", inviteRoutes);
+
 
 
 /* ---------- Basic Routes ---------- */
