@@ -2,18 +2,34 @@ const mongoose = require("mongoose");
 
 const inviteSchema = new mongoose.Schema(
   {
-    instituteUid: {
+    fromType: {
+      type: String,
+      enum: ["teacher", "institute"],
+      required: true,
+    },
+    fromUid: {
       type: String,
       required: true,
     },
-    teacherUid: {
+
+    toType: {
+      type: String,
+      enum: ["teacher", "institute"],
+      required: true,
+    },
+    toUid: {
       type: String,
       required: true,
     },
+
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
+    },
+
+    rejectedAt: {
+      type: Date,
     },
   },
   { timestamps: true }
