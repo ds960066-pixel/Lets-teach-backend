@@ -10,13 +10,13 @@ router.post("/create", async (req, res) => {
     const { fromType, fromUid, toType, toUid } = req.body;
 
     if (!fromType || !fromUid || !toType || !toUid) {
-      return res.json({
+      return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "All fields required",
       });
     }
 
-    // 1️⃣ Check if blocked
+    // 1️⃣ Block check
     const blocked = await Block.findOne({
       blockerUid: toUid,
       blockedUid: fromUid,
@@ -29,14 +29,14 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // 2️⃣ Check duplicate pending invite
-    const existingInvite = await Invite.findOne({
+    // 2️⃣ Duplicate pending invite
+    const existing = await Invite.findOne({
       fromUid,
       toUid,
       status: "pending",
     });
 
-    if (existingInvite) {
+    if (existing) {
       return res.json({
         success: false,
         message: "Invite already sent",
@@ -52,8 +52,7 @@ router.post("/create", async (req, res) => {
 
     if (
       rejectedInvite &&
-      rejectedInvite.rejectedAt &&
-      Date.now() - rejectedInvite.rejectedAt.getTime() <
+      Date.now() - rejectedInvite.rejectedAt <
         7 * 24 * 60 * 60 * 1000
     ) {
       return res.json({
@@ -68,7 +67,6 @@ router.post("/create", async (req, res) => {
       fromUid,
       toType,
       toUid,
-      status: "pending",
     });
 
     res.json({
@@ -77,21 +75,10 @@ router.post("/create", async (req, res) => {
       invite,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-/* ---------- GET INVITES FOR USER ---------- */
-router.get("/:uid", async (req, res) => {
-  try {
-    const invites = await Invite.find({ toUid: req.params.uid }).sort({
-      createdAt: -1,
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
-
-    res.json({ success: true, invites });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -101,19 +88,34 @@ router.post("/accept", async (req, res) => {
     const { inviteId } = req.body;
 
     if (!inviteId) {
-      return res.json({
+      return res.status(400).json({
         success: false,
-        message: "inviteId required",
+        message: "Invite ID required",
       });
     }
 
-    await Invite.findByIdAndUpdate(inviteId, {
-      status: "accepted",
-    });
+    const invite = await Invite.findById(inviteId);
 
-    res.json({ success: true, message: "Invite accepted" });
+    if (!invite) {
+      return res.status(404).json({
+        success: false,
+        message: "Invite not found",
+      });
+    }
+
+    invite.status = "accepted";
+    await invite.save();
+
+    res.json({
+      success: true,
+      message: "Invite accepted",
+      invite,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
@@ -122,21 +124,27 @@ router.post("/reject", async (req, res) => {
   try {
     const { inviteId } = req.body;
 
-    if (!inviteId) {
-      return res.json({
+    const invite = await Invite.findById(inviteId);
+    if (!invite) {
+      return res.status(404).json({
         success: false,
-        message: "inviteId required",
+        message: "Invite not found",
       });
     }
 
-    await Invite.findByIdAndUpdate(inviteId, {
-      status: "rejected",
-      rejectedAt: new Date(),
-    });
+    invite.status = "rejected";
+    invite.rejectedAt = new Date();
+    await invite.save();
 
-    res.json({ success: true, message: "Invite rejected" });
+    res.json({
+      success: true,
+      message: "Invite rejected",
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
@@ -145,13 +153,6 @@ router.post("/block", async (req, res) => {
   try {
     const { blockerType, blockerUid, blockedType, blockedUid } = req.body;
 
-    if (!blockerUid || !blockedUid) {
-      return res.json({
-        success: false,
-        message: "blockerUid and blockedUid required",
-      });
-    }
-
     await Block.create({
       blockerType,
       blockerUid,
@@ -159,9 +160,15 @@ router.post("/block", async (req, res) => {
       blockedUid,
     });
 
-    res.json({ success: true, message: "User blocked successfully" });
+    res.json({
+      success: true,
+      message: "User blocked successfully",
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
