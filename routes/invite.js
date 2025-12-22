@@ -137,6 +137,25 @@ router.post("/reject", async (req, res) => {
   }
 });
 
+/* ---------- GET INVITES FOR USER ---------- */
+router.get("/teacher/:uid", async (req, res) => {
+  try {
+    const invites = await Invite.find({
+      toUid: req.params.uid,
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      invites,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 /* ---------- BLOCK USER ---------- */
 router.post("/block", async (req, res) => {
   try {
