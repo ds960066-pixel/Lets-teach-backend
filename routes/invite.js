@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const Invite = require("../models/Invite");
-const Block = require("../models/Block");
+
 
 /* ---------- CREATE INVITE ---------- */
 router.post("/create", async (req, res) => {
@@ -16,18 +16,7 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // 1️⃣ Block check
-    const blocked = await Block.findOne({
-      blockerUid: toUid,
-      blockedUid: fromUid,
-    });
-
-    if (blocked) {
-      return res.json({
-        success: false,
-        message: "You are blocked by this user",
-      });
-    }
+    
 
     // 2️⃣ Duplicate pending invite
     const existing = await Invite.findOne({
