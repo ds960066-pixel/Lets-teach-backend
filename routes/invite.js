@@ -5,18 +5,18 @@ const Invite = require("../models/Invite");
 /* ---------- CREATE INVITE ---------- */
 router.post("/create", async (req, res) => {
   try {
-    const { instituteUid, teacherUid } = req.body;
+    const { fromType, fromUid, toType, toUid } = req.body;
 
-    if (!instituteUid || !teacherUid) {
+    if (!fromType || !fromUid || !toType || !toUid) {
       return res.status(400).json({
         success: false,
-        message: "Institute UID and Teacher UID required",
+        message: "All fields required",
       });
     }
 
     const existing = await Invite.findOne({
-      instituteUid,
-      teacherUid,
+      fromUid,
+      toUid,
       status: "pending",
     });
 
@@ -28,9 +28,10 @@ router.post("/create", async (req, res) => {
     }
 
     const invite = await Invite.create({
-      instituteUid,
-      teacherUid,
-      status: "pending",
+      fromType,
+      fromUid,
+      toType,
+      toUid,
     });
 
     res.json({
@@ -43,17 +44,15 @@ router.post("/create", async (req, res) => {
   }
 });
 
-/* ---------- GET INVITES FOR TEACHER ---------- */
+/* ---------- GET TEACHER PENDING INVITES ---------- */
 router.get("/teacher/:uid", async (req, res) => {
   try {
     const invites = await Invite.find({
       teacherUid: req.params.uid,
+      status: "pending",
     });
 
-    res.json({
-      success: true,
-      invites,
-    });
+    res.json({ success: true, invites });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
@@ -63,13 +62,6 @@ router.get("/teacher/:uid", async (req, res) => {
 router.post("/respond", async (req, res) => {
   try {
     const { inviteId, status } = req.body;
-
-    if (!inviteId || !status) {
-      return res.status(400).json({
-        success: false,
-        message: "Invite ID and status required",
-      });
-    }
 
     if (!["accepted", "rejected"].includes(status)) {
       return res.status(400).json({
@@ -87,12 +79,15 @@ router.post("/respond", async (req, res) => {
     }
 
     invite.status = status;
+    if (status === "rejected") {
+      invite.rejectedAt = new Date();
+    }
+
     await invite.save();
 
     res.json({
       success: true,
       message: `Invite ${status}`,
-      invite,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
@@ -100,4 +95,3 @@ router.post("/respond", async (req, res) => {
 });
 
 module.exports = router;
-
