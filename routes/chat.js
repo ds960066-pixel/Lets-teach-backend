@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
+
 const Message = require("../models/Message");
 const Invite = require("../models/Invite");
 
-/* ---------- SEND MESSAGE (ONLY AFTER ACCEPT) ---------- */
+/* ---------- SEND MESSAGE ---------- */
 router.post("/send", async (req, res) => {
   try {
     const { senderUid, receiverUid, text } = req.body;
@@ -15,18 +16,12 @@ router.post("/send", async (req, res) => {
       });
     }
 
+    // 🔒 CHECK: Invite accepted?
     const invite = await Invite.findOne({
+      status: "accepted",
       $or: [
-        {
-          instituteUid: senderUid,
-          teacherUid: receiverUid,
-          status: "accepted",
-        },
-        {
-          instituteUid: receiverUid,
-          teacherUid: senderUid,
-          status: "accepted",
-        },
+        { fromUid: senderUid, toUid: receiverUid },
+        { fromUid: receiverUid, toUid: senderUid },
       ],
     });
 
@@ -37,20 +32,18 @@ router.post("/send", async (req, res) => {
       });
     }
 
-    const message = new Message({
+    const message = await Message.create({
       senderUid,
       receiverUid,
       text,
     });
-
-    await message.save();
 
     res.json({
       success: true,
       message: "Message sent",
       data: message,
     });
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -74,7 +67,7 @@ router.get("/:uid1/:uid2", async (req, res) => {
       success: true,
       messages,
     });
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Server error",
