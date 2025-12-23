@@ -7,39 +7,61 @@ const Invite = require("../models/Invite");
  */
 router.post("/create", async (req, res) => {
   try {
-    const { instituteUid, teacherUid } = req.body;
+    const { fromType, fromUid, toType, toUid } = req.body;
 
-    if (!instituteUid || !teacherUid) {
-      return res.status(400).json({ success: false, message: "All fields required" });
+    if (!fromType || !fromUid || !toType || !toUid) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
     }
 
     const existing = await Invite.findOne({
-      instituteUid,
-      teacherUid,
+      fromType,
+      fromUid,
+      toType,
+      toUid,
       status: "pending",
     });
 
     if (existing) {
-      return res.json({ success: false, message: "Invite already sent" });
+      return res.json({
+        success: false,
+        message: "Invite already sent",
+      });
     }
 
-    const invite = new Invite({ instituteUid, teacherUid });
+    const invite = new Invite({
+      fromType,
+      fromUid,
+      toType,
+      toUid,
+    });
+
     await invite.save();
 
-    res.json({ success: true, message: "Invite sent" });
+    res.json({
+      success: true,
+      message: "Invite sent successfully",
+      invite,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("INVITE ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
 /**
- * GET INVITES FOR TEACHER
+ * GET INVITES (FOR USER)
  */
-router.get("/teacher/:teacherUid", async (req, res) => {
+router.get("/:type/:uid", async (req, res) => {
   try {
     const invites = await Invite.find({
-      teacherUid: req.params.teacherUid,
+      toType: req.params.type,
+      toUid: req.params.uid,
       status: "pending",
     });
 
@@ -53,24 +75,21 @@ router.get("/teacher/:teacherUid", async (req, res) => {
  * ACCEPT INVITE
  */
 router.post("/accept/:id", async (req, res) => {
-  try {
-    await Invite.findByIdAndUpdate(req.params.id, { status: "accepted" });
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ success: false });
-  }
+  await Invite.findByIdAndUpdate(req.params.id, {
+    status: "accepted",
+  });
+  res.json({ success: true });
 });
 
 /**
  * REJECT INVITE
  */
 router.post("/reject/:id", async (req, res) => {
-  try {
-    await Invite.findByIdAndUpdate(req.params.id, { status: "rejected" });
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ success: false });
-  }
+  await Invite.findByIdAndUpdate(req.params.id, {
+    status: "rejected",
+    rejectedAt: new Date(),
+  });
+  res.json({ success: true });
 });
 
 module.exports = router;
