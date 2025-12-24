@@ -1,33 +1,34 @@
 const express = require("express");
 const router = express.Router();
-
 const Message = require("../models/Message");
 const Invite = require("../models/Invite");
 
 /**
- * SEND MESSAGE
+ * SEND MESSAGE (only if invite accepted)
  */
 router.post("/send", async (req, res) => {
   try {
     const { senderUid, receiverUid, text } = req.body;
 
     if (!senderUid || !receiverUid || !text) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
     }
 
-    // ✅ Check accepted invite
-    const acceptedInvite = await Invite.findOne({
+    // 🔐 check accepted invite exists
+    const invite = await Invite.findOne({
       $or: [
-        { fromUid: senderUid, toUid: receiverUid },
-        { fromUid: receiverUid, toUid: senderUid },
+        { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
+        { fromUid: receiverUid, toUid: senderUid, status: "accepted" },
       ],
-      status: "accepted",
     });
 
-    if (!acceptedInvite) {
+    if (!invite) {
       return res.status(403).json({
         success: false,
-        message: "Chat not allowed",
+        message: "Chat allowed only after invite acceptance",
       });
     }
 
@@ -37,9 +38,13 @@ router.post("/send", async (req, res) => {
       text,
     });
 
-    res.json({ success: true, message });
-  } catch {
-    res.status(500).json({ success: false });
+    res.json({
+      success: true,
+      message: "Message sent",
+      data: message,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -47,16 +52,18 @@ router.post("/send", async (req, res) => {
  * GET CHAT
  */
 router.get("/:uid1/:uid2", async (req, res) => {
-  const { uid1, uid2 } = req.params;
+  try {
+    const messages = await Message.find({
+      $or: [
+        { senderUid: req.params.uid1, receiverUid: req.params.uid2 },
+        { senderUid: req.params.uid2, receiverUid: req.params.uid1 },
+      ],
+    }).sort({ createdAt: 1 });
 
-  const messages = await Message.find({
-    $or: [
-      { senderUid: uid1, receiverUid: uid2 },
-      { senderUid: uid2, receiverUid: uid1 },
-    ],
-  }).sort({ createdAt: 1 });
-
-  res.json({ success: true, messages });
+    res.json({ success: true, messages });
+  } catch {
+    res.status(500).json({ success: false });
+  }
 });
 
 module.exports = router;
