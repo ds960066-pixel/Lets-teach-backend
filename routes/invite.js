@@ -57,19 +57,22 @@ router.post("/create", async (req, res) => {
 /**
  * GET INVITES (FOR USER)
  */
-router.get("/:type/:uid", async (req, res) => {
+router.get("/teacher/:uid", async (req, res) => {
   try {
     const invites = await Invite.find({
-      toType: req.params.type,
       toUid: req.params.uid,
-      status: "pending",
+      status: "pending"
     });
 
-    res.json({ success: true, invites });
+    res.json({
+      success: true,
+      invites
+    });
   } catch (err) {
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
+
 
 /**
  * ACCEPT INVITE
