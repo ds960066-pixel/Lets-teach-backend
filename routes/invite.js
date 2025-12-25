@@ -94,5 +94,26 @@ router.post("/reject/:id", async (req, res) => {
   });
   res.json({ success: true });
 });
+/**
+ * GET ACCEPTED CONNECTIONS FOR TEACHER
+ */
+router.get("/accepted/teacher/:uid", async (req, res) => {
+  try {
+    const connections = await Invite.find({
+      toUid: req.params.uid,
+      status: "accepted",
+    });
+
+    res.json({
+      success: true,
+      connections,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 
 module.exports = router;
