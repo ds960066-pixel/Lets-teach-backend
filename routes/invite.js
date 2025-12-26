@@ -5,21 +5,16 @@ const Invite = require("../models/Invite");
 /**
  * CREATE INVITE
  */
-router.get("/teacher/:uid", async (req, res) => {
+router.post("/create", async (req, res) => {
   try {
-    const invites = await Invite.find({
-      toUid: req.params.uid
-    });
+    const { fromType, fromUid, toType, toUid } = req.body;
 
-    res.json({
-      success: true,
-      invites
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
+    if (!fromType || !fromUid || !toType || !toUid) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
+    }
 
     const existing = await Invite.findOne({
       fromType,
@@ -60,24 +55,25 @@ router.get("/teacher/:uid", async (req, res) => {
 });
 
 /**
- * GET INVITES (FOR USER)
+ * GET ALL INVITES FOR TEACHER (pending + accepted)
  */
 router.get("/teacher/:uid", async (req, res) => {
   try {
     const invites = await Invite.find({
       toUid: req.params.uid,
-      status: "pending"
     });
 
     res.json({
       success: true,
-      invites
+      invites,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
-
 
 /**
  * ACCEPT INVITE
@@ -86,6 +82,7 @@ router.post("/accept/:id", async (req, res) => {
   await Invite.findByIdAndUpdate(req.params.id, {
     status: "accepted",
   });
+
   res.json({ success: true });
 });
 
@@ -97,28 +94,8 @@ router.post("/reject/:id", async (req, res) => {
     status: "rejected",
     rejectedAt: new Date(),
   });
-  res.json({ success: true });
-});
-/**
- * GET ACCEPTED CONNECTIONS FOR TEACHER
- */
-router.get("/accepted/teacher/:uid", async (req, res) => {
-  try {
-    const connections = await Invite.find({
-      toUid: req.params.uid,
-      status: "accepted",
-    });
 
-    res.json({
-      success: true,
-      connections,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
+  res.json({ success: true });
 });
 
 module.exports = router;
