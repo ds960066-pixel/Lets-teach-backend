@@ -5,16 +5,21 @@ const Invite = require("../models/Invite");
 /**
  * CREATE INVITE
  */
-router.post("/create", async (req, res) => {
+router.get("/teacher/:uid", async (req, res) => {
   try {
-    const { fromType, fromUid, toType, toUid } = req.body;
+    const invites = await Invite.find({
+      toUid: req.params.uid
+    });
 
-    if (!fromType || !fromUid || !toType || !toUid) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields required",
-      });
-    }
+    res.json({
+      success: true,
+      invites
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
     const existing = await Invite.findOne({
       fromType,
