@@ -2,16 +2,17 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const admin = require("firebase-admin");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const Teacher = require("./models/Teacher");
 const Institute = require("./models/Institute");
 const Invite = require("./models/Invite");
 const Message = require("./models/Message");
+
 const teacherRoutes = require("./routes/teacher");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
-
-
 
 /* ---------- Firebase Admin Init ---------- */
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -24,16 +25,24 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-/* ---------- App Init ---------- */
+/* ---------- App + Server Init ---------- */
 const app = express();
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 app.use(cors());
 app.use(express.json());
+
+/* ---------- Routes ---------- */
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
-
-
-
 
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => {
@@ -77,208 +86,63 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     });
   }
 });
+
+/* ---------- DEBUG ---------- */
 app.get("/api/debug/teachers", async (req, res) => {
-  try {
-    const teachers = await Teacher.find();
-    res.json({
-      success: true,
-      count: teachers.length,
-      teachers
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
+  const teachers = await Teacher.find();
+  res.json({ success: true, count: teachers.length, teachers });
 });
 
-
-/* ---------- TEACHER APIs ---------- */
-app.post("/api/teacher/create", async (req, res) => {
-  try {
-    const { uid, name, phone, subject, city, experience } = req.body;
-
-    if (!uid || !name || !phone || !subject || !city) {
-      return res.status(400).json({
-        success: false,
-        message: "All required fields must be filled",
-      });
-    }
-
-    const existingTeacher = await Teacher.findOne({ uid });
-    if (existingTeacher) {
-      return res.status(400).json({
-        success: false,
-        message: "Teacher profile already exists",
-      });
-    }
-
-    const teacher = new Teacher({
-      uid,
-      name,
-      phone,
-      subject,
-      city,
-      experience,
-    });
-
-    await teacher.save();
-
-    res.json({
-      success: true,
-      message: "Teacher profile created successfully",
-      teacher,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
-
-app.get("/api/teacher/:uid", async (req, res) => {
-  try {
-    const teacher = await Teacher.findOne({ uid: req.params.uid });
-
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      teacher,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
-
-/* ---------- INSTITUTE APIs ---------- */
-app.post("/api/institute/create", async (req, res) => {
-  try {
-    const { uid, name, phone, city, address, subjectsNeeded } = req.body;
-
-    if (!uid || !name || !phone || !city) {
-      return res.status(400).json({
-        success: false,
-        message: "All required fields must be filled",
-      });
-    }
-
-    const existingInstitute = await Institute.findOne({ uid });
-    if (existingInstitute) {
-      return res.status(400).json({
-        success: false,
-        message: "Institute profile already exists",
-      });
-    }
-
-    const institute = new Institute({
-      uid,
-      name,
-      phone,
-      city,
-      address,
-      subjectsNeeded,
-    });
-
-    await institute.save();
-
-    res.json({
-      success: true,
-      message: "Institute profile created successfully",
-      institute,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
-
-app.get("/api/institute/:uid", async (req, res) => {
-  try {
-    const institute = await Institute.findOne({ uid: req.params.uid });
-
-    if (!institute) {
-      return res.status(404).json({
-        success: false,
-        message: "Institute not found",
-      });
-    }
-
-    res.json({
-      success: true,
-      institute,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
-
-
-
-/* ---------- CHAT APIs ---------- */
+/* ---------- CHAT REST APIs (backup / history) ---------- */
 app.post("/api/chat/send", async (req, res) => {
-  try {
-    const { senderUid, receiverUid, text } = req.body;
+  const { senderUid, receiverUid, text } = req.body;
 
-    if (!senderUid || !receiverUid || !text) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields required",
-      });
-    }
-
-    const message = new Message({ senderUid, receiverUid, text });
-    await message.save();
-
-    res.json({
-      success: true,
-      message: "Message sent",
-      data: message,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+  if (!senderUid || !receiverUid || !text) {
+    return res.status(400).json({ success: false });
   }
+
+  const message = new Message({ senderUid, receiverUid, text });
+  await message.save();
+
+  res.json({ success: true, data: message });
 });
 
 app.get("/api/chat/:uid1/:uid2", async (req, res) => {
-  try {
-    const { uid1, uid2 } = req.params;
+  const { uid1, uid2 } = req.params;
 
-    const messages = await Message.find({
-      $or: [
-        { senderUid: uid1, receiverUid: uid2 },
-        { senderUid: uid2, receiverUid: uid1 },
-      ],
-    }).sort({ createdAt: 1 });
+  const messages = await Message.find({
+    $or: [
+      { senderUid: uid1, receiverUid: uid2 },
+      { senderUid: uid2, receiverUid: uid1 },
+    ],
+  }).sort({ createdAt: 1 });
 
-    res.json({
-      success: true,
-      messages,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
+  res.json({ success: true, messages });
+});
+
+/* ---------- SOCKET.IO REALTIME CHAT ---------- */
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
+  socket.on("joinRoom", (roomId) => {
+    socket.join(roomId);
+    console.log("Joined room:", roomId);
+  });
+
+  socket.on("sendMessage", async (data) => {
+    const { senderUid, receiverUid, text, roomId } = data;
+
+    // save message
+    const message = new Message({ senderUid, receiverUid, text });
+    await message.save();
+
+    // emit realtime
+    io.to(roomId).emit("receiveMessage", message);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected");
+  });
 });
 
 /* ---------- MongoDB ---------- */
@@ -287,47 +151,8 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log(err));
 
-/* ---------- Server ---------- */
+/* ---------- Start Server ---------- */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-   
-  
-
-
-   
-   
-    
-    
-  
-
-  
-   
-    
-
-    
- 
-    
-
-    
-      
-    
-
-
-    
-    
-   
-
-   
-     
-
-    
-
-   
-   
-
-
-
-
