@@ -15,7 +15,7 @@ const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
 
 /* ---------- Firebase Admin Init ---------- */
-if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+/*if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   throw new Error("FIREBASE_SERVICE_ACCOUNT not found");
 }
 
@@ -24,7 +24,7 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-
+*/
 /* ---------- App + Server Init ---------- */
 const app = express();
 const server = http.createServer(app);
