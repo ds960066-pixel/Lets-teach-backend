@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const admin = require("firebase-admin");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -14,17 +13,6 @@ const teacherRoutes = require("./routes/teacher");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
 
-/* ---------- Firebase Admin Init ---------- */
-/*if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-  throw new Error("FIREBASE_SERVICE_ACCOUNT not found");
-}
-
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-*/
 /* ---------- App + Server Init ---------- */
 const app = express();
 const server = http.createServer(app);
@@ -60,40 +48,13 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-/* ---------- OTP VERIFY API ---------- */
-/*app.post("/api/auth/verify-otp", async (req, res) => {
-  try {
-    const { idToken } = req.body;
-
-    if (!idToken) {
-      return res.status(400).json({
-        success: false,
-        message: "ID Token required",
-      });
-    }
-
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-
-    res.json({
-      success: true,
-      uid: decodedToken.uid,
-      phone: decodedToken.phone_number,
-    });
-  } catch (error) {
-    res.status(401).json({
-      success: false,
-      message: "Invalid or expired token",
-    });
-  }
-});
-*/
 /* ---------- DEBUG ---------- */
 app.get("/api/debug/teachers", async (req, res) => {
   const teachers = await Teacher.find();
   res.json({ success: true, count: teachers.length, teachers });
 });
 
-/* ---------- CHAT REST APIs (backup / history) ---------- */
+/* ---------- CHAT REST APIs ---------- */
 app.post("/api/chat/send", async (req, res) => {
   const { senderUid, receiverUid, text } = req.body;
 
@@ -120,28 +81,21 @@ app.get("/api/chat/:uid1/:uid2", async (req, res) => {
   res.json({ success: true, messages });
 });
 
-/* ---------- SOCKET.IO REALTIME CHAT ---------- */
+/* ---------- SOCKET.IO ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
   socket.on("joinRoom", (roomId) => {
     socket.join(roomId);
-    console.log("Joined room:", roomId);
   });
 
   socket.on("sendMessage", async (data) => {
     const { senderUid, receiverUid, text, roomId } = data;
 
-    // save message
     const message = new Message({ senderUid, receiverUid, text });
     await message.save();
 
-    // emit realtime
     io.to(roomId).emit("receiveMessage", message);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Socket disconnected");
   });
 });
 
