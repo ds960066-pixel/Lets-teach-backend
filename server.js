@@ -61,7 +61,7 @@ app.get("/api/test", (req, res) => {
 });
 
 /* ---------- OTP VERIFY API ---------- */
-app.post("/api/auth/verify-otp", async (req, res) => {
+/*app.post("/api/auth/verify-otp", async (req, res) => {
   try {
     const { idToken } = req.body;
 
@@ -86,7 +86,7 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     });
   }
 });
-
+*/
 /* ---------- DEBUG ---------- */
 app.get("/api/debug/teachers", async (req, res) => {
   const teachers = await Teacher.find();
