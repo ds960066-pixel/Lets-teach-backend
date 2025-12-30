@@ -4,16 +4,18 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 
+/* ---------- Models ---------- */
 const Teacher = require("./models/Teacher");
 const Institute = require("./models/Institute");
 const Invite = require("./models/Invite");
 const Message = require("./models/Message");
 
+/* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
 
-/* ---------- App + Server Init ---------- */
+/* ---------- App + Server ---------- */
 const app = express();
 const server = http.createServer(app);
 
@@ -27,12 +29,12 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-/* ---------- Routes ---------- */
+/* ---------- API Routes ---------- */
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
 
-/* ---------- Basic Routes ---------- */
+/* ---------- Test Routes ---------- */
 app.get("/", (req, res) => {
   res.send("Lets Teach Backend is Live 🚀");
 });
@@ -41,31 +43,22 @@ app.get("/health", (req, res) => {
   res.send("Server is healthy ✅");
 });
 
-app.get("/api/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Lets Teach API working 🚀",
-  });
-});
-
-/* ---------- DEBUG ---------- */
-app.get("/api/debug/teachers", async (req, res) => {
-  const teachers = await Teacher.find();
-  res.json({ success: true, count: teachers.length, teachers });
-});
-
-/* ---------- CHAT REST APIs ---------- */
+/* ---------- CHAT REST (history) ---------- */
 app.post("/api/chat/send", async (req, res) => {
-  const { senderUid, receiverUid, text } = req.body;
+  try {
+    const { senderUid, receiverUid, text } = req.body;
 
-  if (!senderUid || !receiverUid || !text) {
-    return res.status(400).json({ success: false });
+    if (!senderUid || !receiverUid || !text) {
+      return res.status(400).json({ success: false });
+    }
+
+    const message = new Message({ senderUid, receiverUid, text });
+    await message.save();
+
+    res.json({ success: true, data: message });
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
-
-  const message = new Message({ senderUid, receiverUid, text });
-  await message.save();
-
-  res.json({ success: true, data: message });
 });
 
 app.get("/api/chat/:uid1/:uid2", async (req, res) => {
@@ -81,7 +74,7 @@ app.get("/api/chat/:uid1/:uid2", async (req, res) => {
   res.json({ success: true, messages });
 });
 
-/* ---------- SOCKET.IO ---------- */
+/* ---------- SOCKET.IO (Realtime Chat) ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -89,13 +82,15 @@ io.on("connection", (socket) => {
     socket.join(roomId);
   });
 
-  socket.on("sendMessage", async (data) => {
-    const { senderUid, receiverUid, text, roomId } = data;
-
+  socket.on("sendMessage", async ({ senderUid, receiverUid, text, roomId }) => {
     const message = new Message({ senderUid, receiverUid, text });
     await message.save();
 
     io.to(roomId).emit("receiveMessage", message);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected");
   });
 });
 
