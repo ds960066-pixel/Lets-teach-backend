@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const instituteRoutes = require("./routes/institute");
+
 
 /* ---------- Models ---------- */
 const Teacher = require("./models/Teacher");
@@ -34,6 +36,8 @@ app.use(express.json());
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/institute", instituteRoutes);
+
 
 /* ---------- Basic APIs ---------- */
 app.get("/", (req, res) => {
