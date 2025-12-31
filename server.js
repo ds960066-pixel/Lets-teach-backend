@@ -89,20 +89,36 @@ io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
   socket.on("joinRoom", (roomId) => {
+    if (!roomId) return;
     socket.join(roomId);
+    console.log("Joined room:", roomId);
   });
 
   socket.on("sendMessage", async (data) => {
-    const { senderUid, receiverUid, text, roomId } = data;
+    const { senderUid, text, roomId } = data;
 
-    const message = new Message({ senderUid, receiverUid, text });
+    if (!senderUid || !text || !roomId) {
+      return;
+    }
+
+    // save message in DB
+    const message = new Message({
+      senderUid,
+      receiverUid: "room",
+      text,
+    });
+
     await message.save();
 
-    io.to(roomId).emit("receiveMessage", message);
+    // send realtime message to room
+    io.to(roomId).emit("receiveMessage", {
+      senderUid,
+      text,
+    });
   });
 
   socket.on("disconnect", () => {
-    console.log("Socket disconnected");
+    console.log("Socket disconnected:", socket.id);
   });
 });
 
