@@ -3,9 +3,10 @@ const router = express.Router();
 const Message = require("../models/Message");
 const Invite = require("../models/Invite");
 
-/**
- * SEND MESSAGE (only if invite accepted)
- */
+/* =====================================================
+   SEND MESSAGE (Only if invite is ACCEPTED)
+   POST /api/chat/send
+===================================================== */
 router.post("/send", async (req, res) => {
   try {
     const { senderUid, receiverUid, text } = req.body;
@@ -17,7 +18,7 @@ router.post("/send", async (req, res) => {
       });
     }
 
-    // 🔐 Check if invite is accepted (either direction)
+    // 🔐 Allow chat only if invite is accepted (either direction)
     const invite = await Invite.findOne({
       $or: [
         { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
@@ -51,9 +52,10 @@ router.post("/send", async (req, res) => {
   }
 });
 
-/**
- * GET CHAT HISTORY
- */
+/* =====================================================
+   GET CHAT HISTORY
+   GET /api/chat/:uid1/:uid2
+===================================================== */
 router.get("/:uid1/:uid2", async (req, res) => {
   try {
     const { uid1, uid2 } = req.params;
@@ -77,10 +79,11 @@ router.get("/:uid1/:uid2", async (req, res) => {
     });
   }
 });
-/**
- * GET CHAT LIST WITH LAST MESSAGE
- * /api/chat/list/:uid
- */
+
+/* =====================================================
+   CHAT LIST WITH LAST MESSAGE (Dashboard)
+   GET /api/chat/list/:uid
+===================================================== */
 router.get("/list/:uid", async (req, res) => {
   try {
     const uid = req.params.uid;
@@ -89,29 +92,32 @@ router.get("/list/:uid", async (req, res) => {
       $or: [{ senderUid: uid }, { receiverUid: uid }],
     }).sort({ createdAt: -1 });
 
-    const map = {};
+    const chatMap = {};
 
-    messages.forEach(m => {
+    messages.forEach((m) => {
       const other =
         m.senderUid === uid ? m.receiverUid : m.senderUid;
 
-      if (!map[other]) {
-        map[other] = {
+      if (!chatMap[other]) {
+        chatMap[other] = {
           with: other,
           lastText: m.text,
-          time: m.createdAt
+          time: m.createdAt,
         };
       }
     });
 
     res.json({
       success: true,
-      chats: Object.values(map)
+      chats: Object.values(chatMap),
     });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("CHAT LIST ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
-
 
 module.exports = router;
