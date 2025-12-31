@@ -97,5 +97,26 @@ router.post("/reject/:id", async (req, res) => {
 
   res.json({ success: true });
 });
+/**
+ * GET INVITES FOR INSTITUTE
+ */
+router.get("/institute/:uid", async (req, res) => {
+  try {
+    const invites = await Invite.find({
+      toUid: req.params.uid
+    });
+
+    res.json({
+      success: true,
+      invites
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
 
 module.exports = router;
