@@ -13,17 +13,17 @@ router.post("/send", async (req, res) => {
     if (!senderUid || !receiverUid || !text) {
       return res.status(400).json({
         success: false,
-        message: "All fields required",
+        message: "senderUid, receiverUid and text are required",
       });
     }
 
-    // 🔐 check accepted invite exists
+    // 🔐 Check if invite is accepted (either direction)
     const invite = await Invite.findOne({
       $or: [
         { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
         { fromUid: receiverUid, toUid: senderUid, status: "accepted" },
       ],
-    });
+    }).lean();
 
     if (!invite) {
       return res.status(403).json({
@@ -40,29 +40,41 @@ router.post("/send", async (req, res) => {
 
     res.json({
       success: true,
-      message: "Message sent",
       data: message,
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("SEND MESSAGE ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
 /**
- * GET CHAT
+ * GET CHAT HISTORY
  */
 router.get("/:uid1/:uid2", async (req, res) => {
   try {
+    const { uid1, uid2 } = req.params;
+
     const messages = await Message.find({
       $or: [
-        { senderUid: req.params.uid1, receiverUid: req.params.uid2 },
-        { senderUid: req.params.uid2, receiverUid: req.params.uid1 },
+        { senderUid: uid1, receiverUid: uid2 },
+        { senderUid: uid2, receiverUid: uid1 },
       ],
     }).sort({ createdAt: 1 });
 
-    res.json({ success: true, messages });
-  } catch {
-    res.status(500).json({ success: false });
+    res.json({
+      success: true,
+      messages,
+    });
+  } catch (err) {
+    console.error("GET CHAT ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 });
 
