@@ -82,6 +82,22 @@ router.get("/:uid", async (req, res) => {
     });
   }
 });
+// SEARCH TEACHERS
+router.get("/search", async (req, res) => {
+  try {
+    const { city, subject } = req.query;
+
+    const q = {};
+    if (city) q.city = city;
+    if (subject) q.subject = subject;
+
+    const teachers = await Teacher.find(q).limit(50);
+    res.json({ success: true, teachers });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
 
 module.exports = router;
 
