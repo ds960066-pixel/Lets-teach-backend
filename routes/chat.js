@@ -77,5 +77,41 @@ router.get("/:uid1/:uid2", async (req, res) => {
     });
   }
 });
+/**
+ * GET CHAT LIST WITH LAST MESSAGE
+ * /api/chat/list/:uid
+ */
+router.get("/list/:uid", async (req, res) => {
+  try {
+    const uid = req.params.uid;
+
+    const messages = await Message.find({
+      $or: [{ senderUid: uid }, { receiverUid: uid }],
+    }).sort({ createdAt: -1 });
+
+    const map = {};
+
+    messages.forEach(m => {
+      const other =
+        m.senderUid === uid ? m.receiverUid : m.senderUid;
+
+      if (!map[other]) {
+        map[other] = {
+          with: other,
+          lastText: m.text,
+          time: m.createdAt
+        };
+      }
+    });
+
+    res.json({
+      success: true,
+      chats: Object.values(map)
+    });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
 
 module.exports = router;
