@@ -86,5 +86,33 @@ router.get("/:uid", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+/**
+ * PUBLIC BROWSE INSTITUTES
+ * /api/institute/browse?city=Delhi
+ */
+router.get("/browse", async (req, res) => {
+  try {
+    const filter = {};
+
+    if (req.query.city) {
+      filter.city = req.query.city;
+    }
+
+    const institutes = await Institute.find(filter).select(
+      "name city subjectsNeeded registered uid"
+    );
+
+    res.json({
+      success: true,
+      institutes,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 
 module.exports = router;
