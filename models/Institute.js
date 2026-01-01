@@ -5,7 +5,7 @@ const instituteSchema = new mongoose.Schema(
     uid: {
       type: String,
       required: true,
-      unique: true, // Firebase UID
+      unique: true,
     },
     name: {
       type: String,
@@ -27,13 +27,14 @@ const instituteSchema = new mongoose.Schema(
         type: String,
       },
     ],
+
+    // ✅ YAHAN ANDAR ADD KARNA THA
+    registered: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
-registered: {
-  type: Boolean,
-  default: false
-}
-
 
 module.exports = mongoose.model("Institute", instituteSchema);
