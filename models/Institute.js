@@ -30,5 +30,10 @@ const instituteSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+registered: {
+  type: Boolean,
+  default: false
+}
+
 
 module.exports = mongoose.model("Institute", instituteSchema);
