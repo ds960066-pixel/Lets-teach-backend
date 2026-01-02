@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const jobRoutes = require("./routes/job");
 require("dotenv").config();
 
 /* ---------- Routes ---------- */
@@ -35,7 +34,6 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/institute", instituteRoutes);
-app.use("/api/job", jobRoutes);
 
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => {
