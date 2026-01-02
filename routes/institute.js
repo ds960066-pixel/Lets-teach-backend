@@ -7,28 +7,46 @@ const Institute = require("../models/Institute");
  */
 router.post("/create", async (req, res) => {
   try {
-    const { uid, name, phone, city, address } = req.body;
+    const { uid, name, phone, city, address, subjectsNeeded } = req.body;
 
     if (!uid || !name || !phone || !city) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({
+        success: false,
+        message: "Required fields missing",
+      });
     }
 
     const existing = await Institute.findOne({ uid });
     if (existing) {
-      return res.json({ success: false, message: "Institute already exists" });
+      return res.json({
+        success: false,
+        message: "Institute already exists",
+      });
     }
 
-    const institute = new Institute({ uid, name, phone, city, address });
+    const institute = new Institute({
+      uid,
+      name,
+      phone,
+      city,
+      address,
+      subjectsNeeded,
+    });
+
     await institute.save();
 
-    res.json({ success: true, institute });
-  } catch {
+    res.json({
+      success: true,
+      institute,
+    });
+  } catch (err) {
     res.status(500).json({ success: false });
   }
 });
 
 /**
- * ✅ PUBLIC BROWSE — ALWAYS ABOVE :uid
+ * 🔥 PUBLIC BROWSE INSTITUTES
+ * MUST BE ABOVE /:uid
  */
 router.get("/browse", async (req, res) => {
   try {
@@ -39,25 +57,34 @@ router.get("/browse", async (req, res) => {
       "uid name city subjectsNeeded"
     );
 
-    res.json({ success: true, institutes });
-  } catch {
+    res.json({
+      success: true,
+      institutes,
+    });
+  } catch (err) {
     res.status(500).json({ success: false });
   }
 });
 
 /**
- * GET INSTITUTE BY UID (KEEP LAST)
+ * GET INSTITUTE BY UID
  */
 router.get("/:uid", async (req, res) => {
   try {
     const institute = await Institute.findOne({ uid: req.params.uid });
 
     if (!institute) {
-      return res.status(404).json({ success: false });
+      return res.status(404).json({
+        success: false,
+        message: "Institute not found",
+      });
     }
 
-    res.json({ success: true, institute });
-  } catch {
+    res.json({
+      success: true,
+      institute,
+    });
+  } catch (err) {
     res.status(500).json({ success: false });
   }
 });
