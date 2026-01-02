@@ -25,10 +25,15 @@ const teacherSchema = new mongoose.Schema(
     },
     experience: {
       type: String
-    }
-  },
-  { timestamps: true }
-);
+   },
+    role: {
+    type: String,
+    enum: ["part-time", "full-time", "both"],
+    default: "both"
+  }
+
+}, { timestamps: true });
+
 
 module.exports = mongoose.model("Teacher", teacherSchema);
 
