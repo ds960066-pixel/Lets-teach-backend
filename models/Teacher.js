@@ -19,18 +19,20 @@ const teacherSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-    city: {
-      type: String,
-      required: true
-    },
-    experience: {
-      type: String
-   },
-    role: {
-    type: String,
-    enum: ["part-time", "full-time", "both"],
-    default: "both"
-  }
+   city: {
+  type: String,
+  required: true
+},
+experience: {
+  type: Number,   // 👈 better
+  min: 0
+},
+role: {
+  type: String,
+  enum: ["part-time", "full-time", "both"],
+  default: "both"
+}
+
 
 }, { timestamps: true });
 
