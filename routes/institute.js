@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Institute = require("../models/Institute");
+console.log("✅ institute route file loaded");
+
 
 /**
  * CREATE INSTITUTE PROFILE
