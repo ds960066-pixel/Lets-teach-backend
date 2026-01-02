@@ -1,3 +1,5 @@
+console.log("🔥 SERVER FILE LOADED FROM DESKTOP");
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
