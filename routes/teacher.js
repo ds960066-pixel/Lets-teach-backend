@@ -8,7 +8,7 @@ const Teacher = require("../models/Teacher");
  */
 router.post("/create", async (req, res) => {
   try {
-    const { uid, name, phone, subject, city, experience } = req.body;
+    const { uid, name, phone, subject, city, experience, role } = req.body;
 
     if (!uid || !name || !phone || !subject || !city) {
       return res.status(400).json({
@@ -32,6 +32,7 @@ router.post("/create", async (req, res) => {
       subject,
       city,
       experience,
+      role, // ✅ NEW
     });
 
     await teacher.save();
@@ -42,22 +43,25 @@ router.post("/create", async (req, res) => {
       teacher,
     });
   } catch (error) {
+    console.error("Teacher create error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
 /**
  * PUBLIC BROWSE TEACHERS
- * GET /api/teacher/browse?city=Delhi&subject=Math
+ * GET /api/teacher/browse?city=Delhi&subject=Math&role=part-time
  */
 router.get("/browse", async (req, res) => {
   try {
     const filter = {};
+
     if (req.query.city) filter.city = req.query.city;
     if (req.query.subject) filter.subject = req.query.subject;
+    if (req.query.role) filter.role = req.query.role; // ✅ NEW
 
     const teachers = await Teacher.find(filter).select(
-      "uid name subject city experience"
+      "uid name subject city experience role"
     );
 
     res.json({ success: true, teachers });
@@ -68,15 +72,16 @@ router.get("/browse", async (req, res) => {
 
 /**
  * SEARCH TEACHERS
- * GET /api/teacher/search?city=Delhi
+ * GET /api/teacher/search?city=Delhi&subject=Math&role=full-time
  */
 router.get("/search", async (req, res) => {
   try {
-    const { city, subject } = req.query;
+    const { city, subject, role } = req.query;
 
     const q = {};
     if (city) q.city = city;
     if (subject) q.subject = subject;
+    if (role) q.role = role; // ✅ NEW
 
     const teachers = await Teacher.find(q).limit(50);
     res.json({ success: true, teachers });
