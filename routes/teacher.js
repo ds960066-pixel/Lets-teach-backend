@@ -53,6 +53,38 @@ router.post("/create", async (req, res) => {
     });
   }
 });
+/**
+ * PUBLIC BROWSE TEACHERS
+ * /api/teacher/browse?city=Delhi&subject=Math
+ */
+router.get("/browse", async (req, res) => {
+  try {
+    const filter = {};
+
+    if (req.query.city) {
+      filter.city = req.query.city;
+    }
+
+    if (req.query.subject) {
+      filter.subject = req.query.subject;
+    }
+
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience"
+    );
+
+    res.json({
+      success: true,
+      teachers,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 
 /**
  * GET TEACHER BY UID
