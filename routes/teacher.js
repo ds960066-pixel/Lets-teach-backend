@@ -2,10 +2,10 @@ const express = require("express");
 const router = express.Router();
 const Teacher = require("../models/Teacher");
 
-/* =================================================
+/* ======================================
    CREATE TEACHER
    POST /api/teacher/create
-================================================= */
+====================================== */
 router.post("/create", async (req, res) => {
   try {
     const { uid, name, phone, subject, city, experience, role } = req.body;
@@ -33,7 +33,6 @@ router.post("/create", async (req, res) => {
       city,
       experience,
       role
-      // verificationStatus default = unverified
     });
 
     await teacher.save();
@@ -52,10 +51,95 @@ router.post("/create", async (req, res) => {
   }
 });
 
-/* =================================================
-   PUBLIC BROWSE TEACHERS
+/* ======================================
+   PUBLIC BROWSE (ONLY VERIFIED)
    GET /api/teacher/browse
-   ⚠️ ONLY VERIFIED TEACHERS
-================================================= */
+====================================== */
 router.get("/browse", async (req, res) => {
   try {
+    const filter = {
+      verificationStatus: "verified",
+      isBlocked: false
+    };
+
+    if (req.query.city) filter.city = req.query.city;
+    if (req.query.subject) filter.subject = req.query.subject;
+    if (req.query.role) filter.role = req.query.role;
+
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience role"
+    );
+
+    res.json({
+      success: true,
+      teachers
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ======================================
+   SEARCH (ONLY VERIFIED)
+   GET /api/teacher/search
+====================================== */
+router.get("/search", async (req, res) => {
+  try {
+    const { city, subject, role } = req.query;
+
+    const q = {
+      verificationStatus: "verified",
+      isBlocked: false
+    };
+
+    if (city) q.city = city;
+    if (subject) q.subject = subject;
+    if (role) q.role = role;
+
+    const teachers = await Teacher.find(q)
+      .select("uid name subject city experience role")
+      .limit(50);
+
+    res.json({
+      success: true,
+      teachers
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ======================================
+   GET TEACHER BY UID (PRIVATE)
+   GET /api/teacher/:uid
+====================================== */
+router.get("/:uid", async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ uid: req.params.uid });
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      teacher
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+module.exports = router;
