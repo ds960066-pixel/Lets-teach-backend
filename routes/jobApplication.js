@@ -149,23 +149,39 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
       });
     }
 
+    // 1️⃣ Update application status
     application.status = "shortlisted";
     await application.save();
 
-    /* =========================
-       🔔 NOTIFICATION (TEACHER)
-    ========================= */
+    // 2️⃣ AUTO CHAT UNLOCK (INVITE)
+    const existingInvite = await Invite.findOne({
+      fromUid: application.instituteUid,
+      toUid: application.teacherUid,
+      status: "accepted"
+    });
+
+    if (!existingInvite) {
+      await Invite.create({
+        fromType: "institute",
+        fromUid: application.instituteUid,
+        toType: "teacher",
+        toUid: application.teacherUid,
+        status: "accepted",
+        acceptedAt: new Date()
+      });
+    }
+
+    // 3️⃣ NOTIFICATION (TEACHER)
     await Notification.create({
       userUid: application.teacherUid,
       userType: "teacher",
       title: "Application Shortlisted 🎉",
-      message: "Congratulations! Your job application has been shortlisted."
+      message: "You can now chat with the institute."
     });
-    /* ========================= */
 
     res.json({
       success: true,
-      message: "Applicant shortlisted"
+      message: "Applicant shortlisted & chat unlocked"
     });
   } catch (err) {
     console.error("Shortlist error:", err);
@@ -175,7 +191,6 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
     });
   }
 });
-
 
 /* =================================================
    INSTITUTE → REJECT APPLICANT
