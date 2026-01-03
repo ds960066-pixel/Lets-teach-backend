@@ -15,6 +15,7 @@ const chatRoutes = require("./routes/chat");
 const adminRoutes = require("./routes/admin");
 const jobRoutes = require("./routes/job");
 const jobApplicationRoutes = require("./routes/jobApplication");
+const notificationRoutes = require("./routes/notification");
 
 
 /* ---------- App Init ---------- */
@@ -41,6 +42,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/job", jobRoutes);
 app.use("/api/job", jobApplicationRoutes);
+app.use("/api/notification", notificationRoutes);
 
 
 /* ---------- Basic Routes ---------- */
