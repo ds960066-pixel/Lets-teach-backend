@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const Institute = require("../models/Institute");
 
-/**
- * CREATE INSTITUTE
- */
+/* ======================================
+   CREATE INSTITUTE
+   POST /api/institute/create
+====================================== */
 router.post("/create", async (req, res) => {
   try {
     const { uid, name, phone, city, address, subjectsNeeded } = req.body;
@@ -12,15 +13,15 @@ router.post("/create", async (req, res) => {
     if (!uid || !name || !phone || !city) {
       return res.status(400).json({
         success: false,
-        message: "Required fields missing",
+        message: "Required fields missing"
       });
     }
 
     const existing = await Institute.findOne({ uid });
     if (existing) {
-      return res.json({
+      return res.status(409).json({
         success: false,
-        message: "Institute already exists",
+        message: "Institute already exists"
       });
     }
 
@@ -30,27 +31,38 @@ router.post("/create", async (req, res) => {
       phone,
       city,
       address,
-      subjectsNeeded,
+      subjectsNeeded
+      // verificationStatus default = unverified
     });
 
     await institute.save();
 
     res.json({
       success: true,
-      institute,
+      message: "Institute registered successfully",
+      institute
     });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("Institute create error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
-/**
- * 🔥 PUBLIC BROWSE INSTITUTES
- * MUST BE ABOVE /:uid
- */
+/* ======================================
+   PUBLIC BROWSE INSTITUTES
+   GET /api/institute/browse
+   ⚠️ ONLY VERIFIED INSTITUTES
+====================================== */
 router.get("/browse", async (req, res) => {
   try {
-    const filter = {};
+    const filter = {
+      verificationStatus: "verified",
+      isBlocked: false
+    };
+
     if (req.query.city) filter.city = req.query.city;
 
     const institutes = await Institute.find(filter).select(
@@ -59,16 +71,20 @@ router.get("/browse", async (req, res) => {
 
     res.json({
       success: true,
-      institutes,
+      institutes
     });
   } catch (err) {
-    res.status(500).json({ success: false });
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
-/**
- * GET INSTITUTE BY UID
- */
+/* ======================================
+   GET INSTITUTE BY UID (PRIVATE / DASHBOARD)
+   GET /api/institute/:uid
+====================================== */
 router.get("/:uid", async (req, res) => {
   try {
     const institute = await Institute.findOne({ uid: req.params.uid });
@@ -76,16 +92,19 @@ router.get("/:uid", async (req, res) => {
     if (!institute) {
       return res.status(404).json({
         success: false,
-        message: "Institute not found",
+        message: "Institute not found"
       });
     }
 
     res.json({
       success: true,
-      institute,
+      institute
     });
   } catch (err) {
-    res.status(500).json({ success: false });
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
