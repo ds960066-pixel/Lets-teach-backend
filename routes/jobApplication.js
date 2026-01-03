@@ -151,17 +151,30 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
     application.status = "shortlisted";
     await application.save();
 
+    /* =========================
+       🔔 NOTIFICATION (TEACHER)
+    ========================= */
+    await Notification.create({
+      userUid: application.teacherUid,
+      userType: "teacher",
+      title: "Application Shortlisted 🎉",
+      message: "Congratulations! Your job application has been shortlisted."
+    });
+    /* ========================= */
+
     res.json({
       success: true,
       message: "Applicant shortlisted"
     });
-  } catch {
+  } catch (err) {
+    console.error("Shortlist error:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
+
 
 /* =================================================
    INSTITUTE → REJECT APPLICANT
@@ -181,11 +194,23 @@ router.post("/application/reject/:applicationId", async (req, res) => {
     application.status = "rejected";
     await application.save();
 
+    /* =========================
+       🔔 NOTIFICATION (TEACHER)
+    ========================= */
+    await Notification.create({
+      userUid: application.teacherUid,
+      userType: "teacher",
+      title: "Application Update",
+      message: "Your job application was not selected this time."
+    });
+    /* ========================= */
+
     res.json({
       success: true,
       message: "Applicant rejected"
     });
-  } catch {
+  } catch (err) {
+    console.error("Reject error:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
