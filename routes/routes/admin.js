@@ -4,9 +4,70 @@ const router = express.Router();
 const Teacher = require("../models/Teacher");
 const Institute = require("../models/Institute");
 
-/* =========================
-   VERIFY TEACHER
-========================= */
+/* =================================================
+   ADMIN — PENDING VERIFICATION LIST
+================================================= */
+
+/* ---------- Pending Teachers ---------- */
+router.get("/pending/teachers", async (req, res) => {
+  try {
+    const teachers = await Teacher.find(
+      { verificationStatus: "unverified" },
+      {
+        _id: 0,
+        uid: 1,
+        name: 1,
+        subject: 1,
+        city: 1,
+        createdAt: 1
+      }
+    ).sort({ createdAt: 1 });
+
+    res.json({
+      success: true,
+      count: teachers.length,
+      teachers
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ---------- Pending Institutes ---------- */
+router.get("/pending/institutes", async (req, res) => {
+  try {
+    const institutes = await Institute.find(
+      { verificationStatus: "unverified" },
+      {
+        _id: 0,
+        uid: 1,
+        name: 1,
+        city: 1,
+        createdAt: 1
+      }
+    ).sort({ createdAt: 1 });
+
+    res.json({
+      success: true,
+      count: institutes.length,
+      institutes
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   ADMIN — VERIFY / REJECT TEACHER
+================================================= */
+
+/* ---------- Verify Teacher ---------- */
 router.post("/verify/teacher/:uid", async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ uid: req.params.uid });
@@ -36,9 +97,7 @@ router.post("/verify/teacher/:uid", async (req, res) => {
   }
 });
 
-/* =========================
-   REJECT TEACHER
-========================= */
+/* ---------- Reject Teacher ---------- */
 router.post("/reject/teacher/:uid", async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ uid: req.params.uid });
@@ -51,7 +110,8 @@ router.post("/reject/teacher/:uid", async (req, res) => {
     }
 
     teacher.verificationStatus = "rejected";
-    teacher.verificationNote = req.body.reason || "Rejected by admin";
+    teacher.verificationNote =
+      req.body.reason || "Rejected by admin";
 
     await teacher.save();
 
@@ -59,7 +119,7 @@ router.post("/reject/teacher/:uid", async (req, res) => {
       success: true,
       message: "Teacher rejected"
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -67,9 +127,11 @@ router.post("/reject/teacher/:uid", async (req, res) => {
   }
 });
 
-/* =========================
-   VERIFY INSTITUTE
-========================= */
+/* =================================================
+   ADMIN — VERIFY / REJECT INSTITUTE
+================================================= */
+
+/* ---------- Verify Institute ---------- */
 router.post("/verify/institute/:uid", async (req, res) => {
   try {
     const institute = await Institute.findOne({ uid: req.params.uid });
@@ -91,7 +153,7 @@ router.post("/verify/institute/:uid", async (req, res) => {
       success: true,
       message: "Institute verified successfully"
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -99,9 +161,7 @@ router.post("/verify/institute/:uid", async (req, res) => {
   }
 });
 
-/* =========================
-   REJECT INSTITUTE
-========================= */
+/* ---------- Reject Institute ---------- */
 router.post("/reject/institute/:uid", async (req, res) => {
   try {
     const institute = await Institute.findOne({ uid: req.params.uid });
@@ -114,7 +174,8 @@ router.post("/reject/institute/:uid", async (req, res) => {
     }
 
     institute.verificationStatus = "rejected";
-    institute.verificationNote = req.body.reason || "Rejected by admin";
+    institute.verificationNote =
+      req.body.reason || "Rejected by admin";
 
     await institute.save();
 
@@ -122,7 +183,7 @@ router.post("/reject/institute/:uid", async (req, res) => {
       success: true,
       message: "Institute rejected"
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({
       success: false,
       message: "Server error"
