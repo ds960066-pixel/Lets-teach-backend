@@ -119,4 +119,64 @@ router.get("/applications/teacher/:uid", async (req, res) => {
   }
 });
 
+/* =================================================
+   INSTITUTE → SHORTLIST APPLICANT
+   POST /api/job/application/shortlist/:applicationId
+================================================= */
+router.post("/application/shortlist/:applicationId", async (req, res) => {
+  try {
+    const application = await JobApplication.findById(req.params.applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found"
+      });
+    }
+
+    application.status = "shortlisted";
+    await application.save();
+
+    res.json({
+      success: true,
+      message: "Applicant shortlisted"
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   INSTITUTE → REJECT APPLICANT
+   POST /api/job/application/reject/:applicationId
+================================================= */
+router.post("/application/reject/:applicationId", async (req, res) => {
+  try {
+    const application = await JobApplication.findById(req.params.applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found"
+      });
+    }
+
+    application.status = "rejected";
+    await application.save();
+
+    res.json({
+      success: true,
+      message: "Applicant rejected"
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
 module.exports = router;
