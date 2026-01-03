@@ -5,6 +5,8 @@ const Job = require("../models/Job");
 const Teacher = require("../models/Teacher");
 const Institute = require("../models/Institute");
 const JobApplication = require("../models/JobApplication");
+const Notification = require("../models/Notification");
+
 
 /* =================================================
    APPLY TO JOB (TEACHER)
@@ -60,6 +62,18 @@ router.post("/apply", async (req, res) => {
     });
 
     await application.save();
+
+    /* =========================
+       🔔 NOTIFICATION (FINAL)
+    ========================= */
+    await Notification.create({
+      userUid: job.instituteUid,
+      userType: "institute",
+      title: "New Job Application",
+      message: `A teacher has applied for your job: ${job.title}`
+    });
+
+    /* ========================= */
 
     res.json({
       success: true,
