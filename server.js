@@ -5,14 +5,15 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const adminRoutes = require("./routes/admin");
 require("dotenv").config();
 
 /* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
+const instituteRoutes = require("./routes/institute");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
-const instituteRoutes = require("./routes/institute");
+const adminRoutes = require("./routes/admin");
+const jobRoutes = require("./routes/job"); // ✅ JOB ROUTE ADDED
 
 /* ---------- App Init ---------- */
 const app = express();
@@ -22,8 +23,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
-  },
+    methods: ["GET", "POST"]
+  }
 });
 
 /* ---------- Middlewares ---------- */
@@ -32,10 +33,11 @@ app.use(express.json());
 
 /* ---------- Route Mounting ---------- */
 app.use("/api/teacher", teacherRoutes);
+app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/institute", instituteRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/job", jobRoutes); // ✅ JOB ROUTE MOUNTED
 
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => {
@@ -63,7 +65,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("receiveMessage", {
       senderUid,
       receiverUid,
-      text,
+      text
     });
   });
 
