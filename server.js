@@ -7,6 +7,10 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
+/* ---------- Models (Socket needs these) ---------- */
+const Message = require("./models/Message");
+const Invite = require("./models/Invite");
+
 /* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
 const instituteRoutes = require("./routes/institute");
@@ -16,7 +20,6 @@ const adminRoutes = require("./routes/admin");
 const jobRoutes = require("./routes/job");
 const jobApplicationRoutes = require("./routes/jobApplication");
 const notificationRoutes = require("./routes/notification");
-
 
 /* ---------- App Init ---------- */
 const app = express();
@@ -44,7 +47,6 @@ app.use("/api/job", jobRoutes);
 app.use("/api/job", jobApplicationRoutes);
 app.use("/api/notification", notificationRoutes);
 
-
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => {
   res.send("Lets Teach Backend is Live 🚀");
@@ -54,7 +56,7 @@ app.get("/health", (req, res) => {
   res.send("Server is healthy ✅");
 });
 
-/* ---------- Socket.IO Realtime Chat ---------- */
+/* ---------- Socket.IO Realtime Chat (FINAL) ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -64,15 +66,43 @@ io.on("connection", (socket) => {
     console.log("Joined room:", roomId);
   });
 
-  socket.on("sendMessage", (data) => {
-    const { senderUid, receiverUid, text, roomId } = data;
-    if (!senderUid || !receiverUid || !text || !roomId) return;
+  socket.on("sendMessage", async (data) => {
+    try {
+      const { senderUid, receiverUid, text, roomId } = data;
+      if (!senderUid || !receiverUid || !text || !roomId) return;
 
-    io.to(roomId).emit("receiveMessage", {
-      senderUid,
-      receiverUid,
-      text
-    });
+      // 🔒 Allow chat only if invite accepted
+      const invite = await Invite.findOne({
+        $or: [
+          { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
+          { fromUid: receiverUid, toUid: senderUid, status: "accepted" }
+        ]
+      });
+
+      if (!invite) {
+        console.log("❌ Message blocked (no accepted invite)");
+        return;
+      }
+
+      // 💾 Save message to DB
+      const message = new Message({
+        senderUid,
+        receiverUid,
+        text
+      });
+
+      await message.save();
+
+      // 🚀 Emit realtime message
+      io.to(roomId).emit("receiveMessage", {
+        senderUid,
+        receiverUid,
+        text,
+        createdAt: message.createdAt
+      });
+    } catch (err) {
+      console.error("sendMessage error:", err);
+    }
   });
 
   socket.on("disconnect", () => {
