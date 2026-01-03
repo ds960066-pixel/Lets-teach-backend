@@ -13,7 +13,9 @@ const instituteRoutes = require("./routes/institute");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
 const adminRoutes = require("./routes/admin");
-const jobRoutes = require("./routes/job"); // ✅ JOB ROUTE ADDED
+const jobRoutes = require("./routes/job");
+const jobApplicationRoutes = require("./routes/jobApplication");
+
 
 /* ---------- App Init ---------- */
 const app = express();
@@ -37,7 +39,9 @@ app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/job", jobRoutes); // ✅ JOB ROUTE MOUNTED
+app.use("/api/job", jobRoutes);
+app.use("/api/job", jobApplicationRoutes);
+
 
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => {
