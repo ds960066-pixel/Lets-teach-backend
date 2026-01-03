@@ -10,6 +10,7 @@ const inviteSchema = new mongoose.Schema(
     fromUid: {
       type: String,
       required: true,
+      index: true,
     },
 
     toType: {
@@ -20,12 +21,18 @@ const inviteSchema = new mongoose.Schema(
     toUid: {
       type: String,
       required: true,
+      index: true,
     },
 
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
       default: "pending",
+      index: true,
+    },
+
+    acceptedAt: {
+      type: Date,
     },
 
     rejectedAt: {
