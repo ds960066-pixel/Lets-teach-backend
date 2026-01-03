@@ -2,9 +2,6 @@ const mongoose = require("mongoose");
 
 const teacherSchema = new mongoose.Schema(
   {
-    /* =========================
-       BASIC DETAILS (EXISTING)
-    ========================= */
     uid: {
       type: String,
       required: true,
@@ -49,9 +46,7 @@ const teacherSchema = new mongoose.Schema(
       default: "both"
     },
 
-    /* =========================
-       VERIFICATION (ADMIN)
-    ========================= */
+    /* ===== ADMIN VERIFICATION ===== */
     verificationStatus: {
       type: String,
       enum: ["unverified", "verified", "rejected"],
@@ -68,9 +63,7 @@ const teacherSchema = new mongoose.Schema(
       trim: true
     },
 
-    /* =========================
-       TEACHER PORTFOLIO (FUTURE)
-    ========================= */
+    /* ===== PORTFOLIO (FUTURE) ===== */
     about: {
       type: String,
       maxlength: 1000,
@@ -93,9 +86,7 @@ const teacherSchema = new mongoose.Schema(
       type: String
     },
 
-    /* =========================
-       SYSTEM SAFETY
-    ========================= */
+    /* ===== SAFETY ===== */
     isBlocked: {
       type: Boolean,
       default: false
