@@ -7,7 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
-/* ---------- Models (Socket needs these) ---------- */
+/* ---------- Models ---------- */
 const Message = require("./models/Message");
 const Invite = require("./models/Invite");
 
@@ -27,10 +27,7 @@ const server = http.createServer(app);
 
 /* ---------- Socket.IO ---------- */
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 /* ---------- Middlewares ---------- */
@@ -48,13 +45,8 @@ app.use("/api/job", jobApplicationRoutes);
 app.use("/api/notification", notificationRoutes);
 
 /* ---------- Basic Routes ---------- */
-app.get("/", (req, res) => {
-  res.send("Lets Teach Backend is Live 🚀");
-});
-
-app.get("/health", (req, res) => {
-  res.send("Server is healthy ✅");
-});
+app.get("/", (req, res) => res.send("Lets Teach Backend is Live 🚀"));
+app.get("/health", (req, res) => res.send("Server is healthy ✅"));
 
 /* ---------- Socket.IO Realtime Chat (FINAL) ---------- */
 io.on("connection", (socket) => {
@@ -68,10 +60,12 @@ io.on("connection", (socket) => {
 
   socket.on("sendMessage", async (data) => {
     try {
+      console.log("🔥 SEND MESSAGE HIT:", data);
+
       const { senderUid, receiverUid, text, roomId } = data;
       if (!senderUid || !receiverUid || !text || !roomId) return;
 
-      // 🔒 Allow chat only if invite accepted
+      // 🔒 Invite must be accepted
       const invite = await Invite.findOne({
         $or: [
           { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
@@ -84,16 +78,12 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // 💾 Save message to DB
-      const message = new Message({
-        senderUid,
-        receiverUid,
-        text
-      });
-
+      // 💾 Save message
+      const message = new Message({ senderUid, receiverUid, text });
       await message.save();
+      console.log("✅ MESSAGE SAVED:", message._id);
 
-      // 🚀 Emit realtime message
+      // 🚀 Emit to both users
       io.to(roomId).emit("receiveMessage", {
         senderUid,
         receiverUid,
