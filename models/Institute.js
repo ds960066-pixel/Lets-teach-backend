@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const instituteSchema = new mongoose.Schema(
   {
     /* =========================
-       BASIC DETAILS (EXISTING)
+       BASIC DETAILS
     ========================= */
     uid: {
       type: String,
@@ -33,7 +33,8 @@ const instituteSchema = new mongoose.Schema(
 
     address: {
       type: String,
-      trim: true
+      trim: true,
+      default: ""
     },
 
     subjectsNeeded: [
@@ -44,11 +45,11 @@ const instituteSchema = new mongoose.Schema(
     ],
 
     /* =========================
-       REGISTRATION FLAG (EXISTING)
+       REGISTRATION FLAG
     ========================= */
     registered: {
       type: Boolean,
-      default: false
+      default: true
     },
 
     /* =========================
@@ -62,7 +63,8 @@ const instituteSchema = new mongoose.Schema(
     },
 
     verifiedAt: {
-      type: Date
+      type: Date,
+      default: null
     },
 
     verificationNote: {
@@ -71,7 +73,7 @@ const instituteSchema = new mongoose.Schema(
     },
 
     /* =========================
-       SYSTEM SAFETY (FUTURE)
+       SAFETY
     ========================= */
     isBlocked: {
       type: Boolean,
