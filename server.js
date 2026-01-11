@@ -21,6 +21,9 @@ const jobRoutes = require("./routes/job");
 const jobApplicationRoutes = require("./routes/jobApplication");
 const notificationRoutes = require("./routes/notification");
 
+/* 🔥 ADD THIS (MANUAL INSTITUTE ROUTES) */
+const manualInstituteRoutes = require("./routes/manualInstitute");
+
 /* ---------- App Init ---------- */
 const app = express();
 const server = http.createServer(app);
@@ -44,11 +47,14 @@ app.use("/api/job", jobRoutes);
 app.use("/api/job", jobApplicationRoutes);
 app.use("/api/notification", notificationRoutes);
 
+/* 🔥 VERY IMPORTANT */
+app.use("/api/manual-institute", manualInstituteRoutes);
+
 /* ---------- Basic Routes ---------- */
 app.get("/", (req, res) => res.send("Lets Teach Backend is Live 🚀"));
 app.get("/health", (req, res) => res.send("Server is healthy ✅"));
 
-/* ---------- Socket.IO Realtime Chat (FINAL) ---------- */
+/* ---------- Socket.IO Realtime Chat ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -65,7 +71,6 @@ io.on("connection", (socket) => {
       const { senderUid, receiverUid, text, roomId } = data;
       if (!senderUid || !receiverUid || !text || !roomId) return;
 
-      // 🔒 Invite must be accepted
       const invite = await Invite.findOne({
         $or: [
           { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
@@ -78,12 +83,9 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // 💾 Save message
       const message = new Message({ senderUid, receiverUid, text });
       await message.save();
-      console.log("✅ MESSAGE SAVED:", message._id);
 
-      // 🚀 Emit to both users
       io.to(roomId).emit("receiveMessage", {
         senderUid,
         receiverUid,
