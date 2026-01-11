@@ -3,7 +3,7 @@ const router = express.Router();
 const Teacher = require("../models/Teacher");
 
 /* ======================================
-   LOGIN CHECK (TEACHER) ✅ REQUIRED
+   LOGIN CHECK (TEACHER) ✅ MUST BE FIRST
    GET /api/teacher/login-check/:uid
 ====================================== */
 router.get("/login-check/:uid", async (req, res) => {
@@ -21,7 +21,7 @@ router.get("/login-check/:uid", async (req, res) => {
     return res.json({ status: "OK" });
   } catch (err) {
     console.error("Teacher login-check error:", err);
-    res.status(500).json({ status: "ERROR" });
+    return res.status(500).json({ status: "ERROR" });
   }
 });
 
@@ -139,7 +139,7 @@ router.get("/search", async (req, res) => {
 });
 
 /* ======================================
-   GET TEACHER BY UID (PRIVATE / DASHBOARD)
+   GET TEACHER BY UID (PRIVATE) ❗ LAST
    GET /api/teacher/:uid
 ====================================== */
 router.get("/:uid", async (req, res) => {
