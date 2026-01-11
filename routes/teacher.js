@@ -75,13 +75,12 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   PUBLIC BROWSE (ONLY VERIFIED)
+   PUBLIC BROWSE 
    GET /api/teacher/browse
 ====================================== */
 router.get("/browse", async (req, res) => {
   try {
     const filter = {
-      verificationStatus: "verified",
       isBlocked: false
     };
 
