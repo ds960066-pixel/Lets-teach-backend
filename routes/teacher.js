@@ -82,7 +82,6 @@ router.post("/create", async (req, res) => {
 router.get("/public", async (req, res) => {
   try {
     const filter = {
-      verificationStatus: "verified",
       isBlocked: false
     };
 
