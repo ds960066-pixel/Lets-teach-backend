@@ -3,7 +3,7 @@ const router = express.Router();
 const Institute = require("../models/Institute");
 
 /* ======================================
-   LOGIN CHECK (INSTITUTE) ✅ MUST BE FIRST
+   LOGIN CHECK (INSTITUTE) ✅ FIRST
    GET /api/institute/login-check/:uid
 ====================================== */
 router.get("/login-check/:uid", async (req, res) => {
@@ -74,11 +74,10 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   PUBLIC BROWSE INSTITUTES
-   GET /api/institute/browse
-   (ONLY VERIFIED)
+   PUBLIC – VERIFIED INSTITUTES ONLY
+   GET /api/institute/public
 ====================================== */
-router.get("/browse", async (req, res) => {
+router.get("/public", async (req, res) => {
   try {
     const filter = {
       verificationStatus: "verified",
@@ -96,6 +95,36 @@ router.get("/browse", async (req, res) => {
       institutes
     });
   } catch (err) {
+    console.error("Institute public error:", err);
+    res.status(500).json({
+      success: false,
+      institutes: []
+    });
+  }
+});
+
+/* ======================================
+   BROWSE AFTER LOGIN (MIXED VIEW)
+   GET /api/institute/browse
+====================================== */
+router.get("/browse", async (req, res) => {
+  try {
+    const filter = {
+      isBlocked: false
+    };
+
+    if (req.query.city) filter.city = req.query.city;
+
+    const institutes = await Institute.find(filter).select(
+      "uid name city subjectsNeeded verificationStatus"
+    );
+
+    res.json({
+      success: true,
+      institutes
+    });
+  } catch (err) {
+    console.error("Institute browse error:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -104,9 +133,9 @@ router.get("/browse", async (req, res) => {
 });
 
 /* ======================================
-   GET INSTITUTE BY UID (PRIVATE / DASHBOARD)
-   GET /api/institute/:uid
+   GET INSTITUTE BY UID (PROFILE)
    ❗ MUST BE LAST
+   GET /api/institute/:uid
 ====================================== */
 router.get("/:uid", async (req, res) => {
   try {
