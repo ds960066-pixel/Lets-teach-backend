@@ -3,6 +3,29 @@ const router = express.Router();
 const Teacher = require("../models/Teacher");
 
 /* ======================================
+   LOGIN CHECK (TEACHER) ✅ REQUIRED
+   GET /api/teacher/login-check/:uid
+====================================== */
+router.get("/login-check/:uid", async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ uid: req.params.uid });
+
+    if (!teacher) {
+      return res.json({ status: "REGISTER_REQUIRED" });
+    }
+
+    if (teacher.isBlocked) {
+      return res.json({ status: "BLOCKED" });
+    }
+
+    return res.json({ status: "OK" });
+  } catch (err) {
+    console.error("Teacher login-check error:", err);
+    res.status(500).json({ status: "ERROR" });
+  }
+});
+
+/* ======================================
    CREATE TEACHER
    POST /api/teacher/create
 ====================================== */
@@ -116,7 +139,7 @@ router.get("/search", async (req, res) => {
 });
 
 /* ======================================
-   GET TEACHER BY UID (PRIVATE)
+   GET TEACHER BY UID (PRIVATE / DASHBOARD)
    GET /api/teacher/:uid
 ====================================== */
 router.get("/:uid", async (req, res) => {
