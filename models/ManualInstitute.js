@@ -11,6 +11,7 @@ const manualInstituteSchema = new mongoose.Schema(
     city: {
       type: String,
       required: true,
+      trim: true,
       index: true
     },
 
@@ -21,7 +22,8 @@ const manualInstituteSchema = new mongoose.Schema(
 
     email: {
       type: String,
-      trim: true
+      trim: true,
+      lowercase: true
     },
 
     isRegistered: {
@@ -34,7 +36,12 @@ const manualInstituteSchema = new mongoose.Schema(
       default: null
     }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-module.exports = mongoose.model("ManualInstitute", manualInstituteSchema);
+module.exports = mongoose.model(
+  "ManualInstitute",
+  manualInstituteSchema
+);
