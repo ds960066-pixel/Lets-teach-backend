@@ -3,6 +3,29 @@ const router = express.Router();
 const Institute = require("../models/Institute");
 
 /* ======================================
+   LOGIN CHECK (INSTITUTE) ✅ MUST BE FIRST
+   GET /api/institute/login-check/:uid
+====================================== */
+router.get("/login-check/:uid", async (req, res) => {
+  try {
+    const institute = await Institute.findOne({ uid: req.params.uid });
+
+    if (!institute) {
+      return res.json({ status: "REGISTER_REQUIRED" });
+    }
+
+    if (institute.isBlocked) {
+      return res.json({ status: "BLOCKED" });
+    }
+
+    return res.json({ status: "OK" });
+  } catch (err) {
+    console.error("Institute login-check error:", err);
+    return res.status(500).json({ status: "ERROR" });
+  }
+});
+
+/* ======================================
    CREATE INSTITUTE
    POST /api/institute/create
 ====================================== */
@@ -32,7 +55,6 @@ router.post("/create", async (req, res) => {
       city,
       address,
       subjectsNeeded
-      // verificationStatus default = unverified
     });
 
     await institute.save();
@@ -54,7 +76,7 @@ router.post("/create", async (req, res) => {
 /* ======================================
    PUBLIC BROWSE INSTITUTES
    GET /api/institute/browse
-   ⚠️ ONLY VERIFIED INSTITUTES
+   (ONLY VERIFIED)
 ====================================== */
 router.get("/browse", async (req, res) => {
   try {
@@ -84,6 +106,7 @@ router.get("/browse", async (req, res) => {
 /* ======================================
    GET INSTITUTE BY UID (PRIVATE / DASHBOARD)
    GET /api/institute/:uid
+   ❗ MUST BE LAST
 ====================================== */
 router.get("/:uid", async (req, res) => {
   try {
