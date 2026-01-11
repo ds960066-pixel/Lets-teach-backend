@@ -37,7 +37,8 @@ const teacherSchema = new mongoose.Schema(
 
     experience: {
       type: Number,
-      min: 0
+      min: 0,
+      default: 0
     },
 
     role: {
@@ -55,7 +56,8 @@ const teacherSchema = new mongoose.Schema(
     },
 
     verifiedAt: {
-      type: Date
+      type: Date,
+      default: null
     },
 
     verificationNote: {
@@ -63,7 +65,7 @@ const teacherSchema = new mongoose.Schema(
       trim: true
     },
 
-    /* ===== PORTFOLIO (FUTURE) ===== */
+    /* ===== PORTFOLIO (PROFILE) ===== */
     about: {
       type: String,
       maxlength: 1000,
@@ -83,7 +85,8 @@ const teacherSchema = new mongoose.Schema(
     },
 
     resumeUrl: {
-      type: String
+      type: String,
+      trim: true
     },
 
     /* ===== SAFETY ===== */
