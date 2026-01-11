@@ -3,7 +3,7 @@ const router = express.Router();
 const Teacher = require("../models/Teacher");
 
 /* ======================================
-   LOGIN CHECK (TEACHER) ✅ MUST BE FIRST
+   LOGIN CHECK (TEACHER) ✅ FIRST
    GET /api/teacher/login-check/:uid
 ====================================== */
 router.get("/login-check/:uid", async (req, res) => {
@@ -75,18 +75,19 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   PUBLIC BROWSE 
-   GET /api/teacher/browse
+   PUBLIC BROWSE (NO LOGIN)
+   ✅ ONLY VERIFIED TEACHERS
+   GET /api/teacher/public
 ====================================== */
-router.get("/browse", async (req, res) => {
+router.get("/public", async (req, res) => {
   try {
     const filter = {
+      verificationStatus: "verified",
       isBlocked: false
     };
 
     if (req.query.city) filter.city = req.query.city;
     if (req.query.subject) filter.subject = req.query.subject;
-    if (req.query.role) filter.role = req.query.role;
 
     const teachers = await Teacher.find(filter).select(
       "uid name subject city experience role"
@@ -105,25 +106,23 @@ router.get("/browse", async (req, res) => {
 });
 
 /* ======================================
-   SEARCH (ONLY VERIFIED)
-   GET /api/teacher/search
+   BROWSE AFTER LOGIN
+   ✅ VERIFIED + UNVERIFIED (MIX)
+   GET /api/teacher/browse
 ====================================== */
-router.get("/search", async (req, res) => {
+router.get("/browse", async (req, res) => {
   try {
-    const { city, subject, role } = req.query;
-
-    const q = {
-      verificationStatus: "verified",
+    const filter = {
       isBlocked: false
     };
 
-    if (city) q.city = city;
-    if (subject) q.subject = subject;
-    if (role) q.role = role;
+    if (req.query.city) filter.city = req.query.city;
+    if (req.query.subject) filter.subject = req.query.subject;
+    if (req.query.role) filter.role = req.query.role;
 
-    const teachers = await Teacher.find(q)
-      .select("uid name subject city experience role")
-      .limit(50);
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience role verificationStatus"
+    );
 
     res.json({
       success: true,
@@ -138,7 +137,8 @@ router.get("/search", async (req, res) => {
 });
 
 /* ======================================
-   GET TEACHER BY UID (PRIVATE) ❗ LAST
+   GET TEACHER BY UID (PROFILE)
+   ❗ MUST BE LAST
    GET /api/teacher/:uid
 ====================================== */
 router.get("/:uid", async (req, res) => {
