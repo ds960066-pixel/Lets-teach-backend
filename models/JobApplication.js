@@ -14,6 +14,12 @@ const jobApplicationSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    resumeSnapshot: {
+  about: String,
+  skills: [String],
+  education: String
+},
+
 
     instituteUid: {
       type: String,
