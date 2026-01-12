@@ -104,6 +104,49 @@ router.post("/resume", async (req, res) => {
     });
   }
 });
+const upload = require("../utils/uploadResume");
+
+/* ======================================
+   UPLOAD RESUME (PDF)
+   POST /api/teacher/upload-resume/:uid
+====================================== */
+router.post(
+  "/upload-resume/:uid",
+  upload.single("resume"),
+  async (req, res) => {
+    try {
+      const teacher = await Teacher.findOne({ uid: req.params.uid });
+
+      if (!teacher) {
+        return res.status(404).json({
+          success: false,
+          message: "Teacher not found"
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Resume PDF required"
+        });
+      }
+
+      teacher.resumeUrl = `/uploads/resumes/${req.file.filename}`;
+      await teacher.save();
+
+      res.json({
+        success: true,
+        message: "Resume uploaded successfully",
+        resumeUrl: teacher.resumeUrl
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: "Server error"
+      });
+    }
+  }
+);
 
 
 /* ======================================
