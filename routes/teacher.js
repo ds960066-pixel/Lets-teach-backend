@@ -59,6 +59,52 @@ router.post("/create", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+/* ======================================
+   SAVE / UPDATE RESUME
+   POST /api/teacher/resume
+====================================== */
+router.post("/resume", async (req, res) => {
+  try {
+    const { uid, summary, experienceDetails, education, skills } = req.body;
+
+    if (!uid || !summary || !education) {
+      return res.status(400).json({
+        success: false,
+        message: "Required resume fields missing"
+      });
+    }
+
+    const teacher = await Teacher.findOne({ uid });
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    teacher.resume = {
+      summary,
+      experienceDetails,
+      education,
+      skills: skills || [],
+      isComplete: true
+    };
+
+    await teacher.save();
+
+    res.json({
+      success: true,
+      message: "Resume saved successfully"
+    });
+  } catch (err) {
+    console.error("Resume save error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
 
 /* ======================================
    PUBLIC BROWSE (NO LOGIN)
