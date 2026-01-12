@@ -48,6 +48,7 @@ if (
   !teacher.skills ||
   teacher.skills.length === 0
 ) {
+   if (!teacher.resume || !teacher.resume.isComplete) {
   return res.status(400).json({
     success: false,
     message: "Please complete your resume before applying for jobs"
