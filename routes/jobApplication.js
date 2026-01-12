@@ -9,9 +9,8 @@ const Invite = require("../models/Invite");
 const JobApplication = require("../models/JobApplication");
 const Notification = require("../models/Notification");
 
-
 /* =================================================
-   APPLY TO JOB (TEACHER)
+   APPLY TO JOB (TEACHER) ✅ RESUME SNAPSHOT ADDED
    POST /api/job/apply
 ================================================= */
 router.post("/apply", async (req, res) => {
@@ -45,6 +44,14 @@ router.post("/apply", async (req, res) => {
       });
     }
 
+    // 🔒 Resume mandatory check (RECOMMENDED)
+    if (!teacher.about || !teacher.education) {
+      return res.status(400).json({
+        success: false,
+        message: "Please complete your resume before applying"
+      });
+    }
+
     const alreadyApplied = await JobApplication.findOne({
       jobId,
       teacherUid
@@ -57,16 +64,24 @@ router.post("/apply", async (req, res) => {
       });
     }
 
+    /* =========================
+       📌 RESUME SNAPSHOT (FINAL)
+    ========================= */
     const application = new JobApplication({
       jobId,
       teacherUid,
-      instituteUid: job.instituteUid
+      instituteUid: job.instituteUid,
+      resumeSnapshot: {
+        about: teacher.about,
+        skills: teacher.skills || [],
+        education: teacher.education
+      }
     });
 
     await application.save();
 
     /* =========================
-       🔔 NOTIFICATION (FINAL)
+       🔔 NOTIFICATION (INSTITUTE)
     ========================= */
     await Notification.create({
       userUid: job.instituteUid,
@@ -74,8 +89,6 @@ router.post("/apply", async (req, res) => {
       title: "New Job Application",
       message: `A teacher has applied for your job: ${job.title}`
     });
-
-    /* ========================= */
 
     res.json({
       success: true,
@@ -137,7 +150,6 @@ router.get("/applications/teacher/:uid", async (req, res) => {
 
 /* =================================================
    INSTITUTE → SHORTLIST APPLICANT
-   POST /api/job/application/shortlist/:applicationId
 ================================================= */
 router.post("/application/shortlist/:applicationId", async (req, res) => {
   try {
@@ -150,11 +162,9 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
       });
     }
 
-    // 1️⃣ Update application status
     application.status = "shortlisted";
     await application.save();
 
-    // 2️⃣ AUTO CHAT UNLOCK (INVITE)
     const existingInvite = await Invite.findOne({
       fromUid: application.instituteUid,
       toUid: application.teacherUid,
@@ -172,7 +182,6 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
       });
     }
 
-    // 3️⃣ NOTIFICATION (TEACHER)
     await Notification.create({
       userUid: application.teacherUid,
       userType: "teacher",
@@ -185,7 +194,6 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
       message: "Applicant shortlisted & chat unlocked"
     });
   } catch (err) {
-    console.error("Shortlist error:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -195,7 +203,6 @@ router.post("/application/shortlist/:applicationId", async (req, res) => {
 
 /* =================================================
    INSTITUTE → REJECT APPLICANT
-   POST /api/job/application/reject/:applicationId
 ================================================= */
 router.post("/application/reject/:applicationId", async (req, res) => {
   try {
@@ -211,23 +218,18 @@ router.post("/application/reject/:applicationId", async (req, res) => {
     application.status = "rejected";
     await application.save();
 
-    /* =========================
-       🔔 NOTIFICATION (TEACHER)
-    ========================= */
     await Notification.create({
       userUid: application.teacherUid,
       userType: "teacher",
       title: "Application Update",
       message: "Your job application was not selected this time."
     });
-    /* ========================= */
 
     res.json({
       success: true,
       message: "Applicant rejected"
     });
   } catch (err) {
-    console.error("Reject error:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
