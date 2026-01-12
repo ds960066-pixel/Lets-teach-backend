@@ -88,6 +88,15 @@ const teacherSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+/* ===== RESUME (MANDATORY FOR JOB APPLY) ===== */
+resume: {
+  summary: { type: String, trim: true },
+  experienceDetails: { type: String, trim: true },
+  education: { type: String, trim: true },
+  skills: [{ type: String, trim: true }],
+  pdfUrl: { type: String, default: null }, // future upload
+  isComplete: { type: Boolean, default: false }
+},
 
     /* ===== SAFETY ===== */
     isBlocked: {
