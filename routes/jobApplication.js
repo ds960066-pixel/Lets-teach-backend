@@ -33,24 +33,27 @@ router.post("/apply", async (req, res) => {
     }
 
     const teacher = await Teacher.findOne({ uid: teacherUid });
-    if (
-      !teacher ||
-      teacher.verificationStatus !== "verified" ||
-      teacher.isBlocked
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Teacher not allowed to apply"
-      });
-    }
 
-    // 🔒 Resume mandatory check (RECOMMENDED)
-    if (!teacher.about || !teacher.education) {
-      return res.status(400).json({
-        success: false,
-        message: "Please complete your resume before applying"
-      });
-    }
+if (!teacher || teacher.isBlocked) {
+  return res.status(403).json({
+    success: false,
+    message: "Teacher not allowed to apply"
+  });
+}
+
+/* 🔒 RESUME MANDATORY CHECK */
+if (
+  !teacher.about ||
+  !teacher.education ||
+  !teacher.skills ||
+  teacher.skills.length === 0
+) {
+  return res.status(400).json({
+    success: false,
+    message: "Please complete your resume before applying for jobs"
+  });
+}
+
 
     const alreadyApplied = await JobApplication.findOne({
       jobId,
