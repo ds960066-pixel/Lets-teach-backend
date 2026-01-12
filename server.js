@@ -45,6 +45,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/job", jobRoutes);
 app.use("/api/job", jobApplicationRoutes);
+app.use("/uploads", express.static("uploads"));
 app.use("/api/notification", notificationRoutes);
 
 /* 🔥 VERY IMPORTANT */
