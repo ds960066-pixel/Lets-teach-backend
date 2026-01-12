@@ -140,6 +140,50 @@ router.post("/resume/:uid", async (req, res) => {
     });
   }
 });
+/* ======================================
+   UPDATE TEACHER RESUME
+   POST /api/teacher/resume
+====================================== */
+router.post("/resume", async (req, res) => {
+  try {
+    const { uid, about, skills, education } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        message: "UID required"
+      });
+    }
+
+    const teacher = await Teacher.findOne({ uid });
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    teacher.about = about;
+    teacher.education = education;
+    teacher.skills = Array.isArray(skills)
+      ? skills
+      : (skills || "").split(",").map(s => s.trim());
+
+    await teacher.save();
+
+    res.json({
+      success: true,
+      message: "Resume updated successfully"
+    });
+  } catch (err) {
+    console.error("Resume update error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
 
 /* ======================================
    GET TEACHER BY UID (PROFILE)
