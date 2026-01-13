@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-<<<<<<< Updated upstream
 
 const Job = require("../models/Job");
 const Institute = require("../models/Institute");
@@ -37,54 +36,32 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    if (
-      institute.verificationStatus !== "verified" ||
-      institute.isBlocked
-    ) {
+    if (institute.isBlocked || institute.verificationStatus !== "verified") {
       return res.status(403).json({
         success: false,
         message: "Institute not verified to post jobs"
       });
     }
 
-    const job = new Job({
-=======
-const Job = require("../models/Job");
-
-/**
- * CREATE JOB (Institute)
- * POST /api/job/create
- */
-router.post("/create", async (req, res) => {
-  try {
-    const { instituteUid, title, subject, city, role, salary, description } = req.body;
-
-    if (!instituteUid || !title || !subject || !city) {
-      return res.status(400).json({ success: false, message: "Required fields missing" });
-    }
-
     const job = await Job.create({
->>>>>>> Stashed changes
       instituteUid,
-      title,
-      subject,
-      city,
-      role,
-      salary,
-      description
+      title: String(title).trim(),
+      subject: String(subject).trim(),
+      city: String(city).trim(),
+      role: role ? String(role).trim() : "both",
+      salary: salary ? String(salary).trim() : "Negotiable",
+      description: description ? String(description).trim() : "",
+      status: "open"
     });
 
-<<<<<<< Updated upstream
-    await job.save();
-
-    res.json({
+    return res.json({
       success: true,
       message: "Job posted successfully",
       job
     });
   } catch (err) {
     console.error("Job create error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
@@ -93,42 +70,27 @@ router.post("/create", async (req, res) => {
 
 /* =================================================
    PUBLIC BROWSE JOBS (ONLY OPEN)
-   GET /api/job/browse
+   GET /api/job/browse?city=&subject=&role=
 ================================================= */
 router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
-=======
-    res.json({ success: true, job });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-/**
- * PUBLIC BROWSE JOBS
- * GET /api/job/browse?city=Delhi&subject=Math&role=part-time
- */
-router.get("/browse", async (req, res) => {
-  try {
-    const filter = {};
->>>>>>> Stashed changes
 
     if (req.query.city) filter.city = req.query.city;
     if (req.query.subject) filter.subject = req.query.subject;
     if (req.query.role) filter.role = req.query.role;
 
-<<<<<<< Updated upstream
     const jobs = await Job.find(filter)
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.json({
+    return res.json({
       success: true,
       jobs
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Job browse error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
@@ -144,12 +106,13 @@ router.get("/institute/:uid", async (req, res) => {
     const jobs = await Job.find({ instituteUid: req.params.uid })
       .sort({ createdAt: -1 });
 
-    res.json({
+    return res.json({
       success: true,
       jobs
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Institute jobs error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
@@ -174,22 +137,16 @@ router.post("/close/:jobId", async (req, res) => {
     job.status = "closed";
     await job.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Job closed"
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Job close error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
-=======
-    const jobs = await Job.find(filter).sort({ createdAt: -1 });
-
-    res.json({ success: true, jobs });
-  } catch {
-    res.status(500).json({ success: false });
->>>>>>> Stashed changes
   }
 });
 
