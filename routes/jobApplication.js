@@ -82,7 +82,7 @@ router.post("/apply", async (req, res) => {
     await application.save();
 
     /* =========================
-       🔔 NOTIFICATION
+       🔔 NOTIFICATION (INSTITUTE)
     ========================= */
     await Notification.create({
       userUid: job.instituteUid,
@@ -91,14 +91,79 @@ router.post("/apply", async (req, res) => {
       message: `A teacher has applied for your job: ${job.title}`
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: "Job application submitted",
       application
     });
   } catch (err) {
     console.error("Job apply error:", err);
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   INSTITUTE → VIEW APPLICATIONS (WITH TEACHER + RESUME PDF)
+   GET /api/job/applications/institute/:uid
+================================================= */
+router.get("/applications/institute/:uid", async (req, res) => {
+  try {
+    const applications = await JobApplication.find({
+      instituteUid: req.params.uid
+    }).sort({ createdAt: -1 });
+
+    if (!applications || applications.length === 0) {
+      return res.json({ success: true, applications: [] });
+    }
+
+    const teacherUids = [...new Set(applications.map(a => a.teacherUid))];
+
+    // ✅ Teacher details (resumeUrl must exist in Teacher model)
+    const teachers = await Teacher.find({ uid: { $in: teacherUids } }).select(
+      "uid name phone subject city resumeUrl about education skills"
+    );
+
+    const map = {};
+    teachers.forEach(t => (map[t.uid] = t));
+
+    const enriched = applications.map(a => ({
+      ...a.toObject(),
+      teacher: map[a.teacherUid] || null
+    }));
+
+    return res.json({
+      success: true,
+      applications: enriched
+    });
+  } catch (err) {
+    console.error("Institute applications error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   TEACHER → MY APPLICATIONS
+   GET /api/job/applications/teacher/:uid
+================================================= */
+router.get("/applications/teacher/:uid", async (req, res) => {
+  try {
+    const applications = await JobApplication.find({
+      teacherUid: req.params.uid
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      applications
+    });
+  } catch (err) {
+    console.error("Teacher applications error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
