@@ -211,5 +211,118 @@ router.post("/link-manual-institute", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+/* =================================================
+   ADMIN — ALL LIST (SEARCH)
+================================================= */
+
+/* ---------- All Teachers (optional filters) ---------- */
+router.get("/all/teachers", async (req, res) => {
+  try {
+    const q = {};
+    if (req.query.city) q.city = req.query.city;
+    if (req.query.subject) q.subject = req.query.subject;
+    if (req.query.uid) q.uid = req.query.uid;
+
+    const teachers = await Teacher.find(q)
+      .select("uid name phone subject city verificationStatus isBlocked createdAt")
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    res.json({ success: true, teachers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* ---------- All Institutes (optional filters) ---------- */
+router.get("/all/institutes", async (req, res) => {
+  try {
+    const q = {};
+    if (req.query.city) q.city = req.query.city;
+    if (req.query.uid) q.uid = req.query.uid;
+
+    const institutes = await Institute.find(q)
+      .select("uid name phone city verificationStatus registered isBlocked createdAt")
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    res.json({ success: true, institutes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =================================================
+   ADMIN — BLOCK / UNBLOCK
+================================================= */
+router.post("/block/teacher/:uid", async (req, res) => {
+  try {
+    const t = await Teacher.findOne({ uid: req.params.uid });
+    if (!t) return res.status(404).json({ success: false, message: "Teacher not found" });
+    t.isBlocked = true;
+    await t.save();
+    res.json({ success: true, message: "Teacher blocked" });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/unblock/teacher/:uid", async (req, res) => {
+  try {
+    const t = await Teacher.findOne({ uid: req.params.uid });
+    if (!t) return res.status(404).json({ success: false, message: "Teacher not found" });
+    t.isBlocked = false;
+    await t.save();
+    res.json({ success: true, message: "Teacher unblocked" });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/block/institute/:uid", async (req, res) => {
+  try {
+    const i = await Institute.findOne({ uid: req.params.uid });
+    if (!i) return res.status(404).json({ success: false, message: "Institute not found" });
+    i.isBlocked = true;
+    await i.save();
+    res.json({ success: true, message: "Institute blocked" });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/unblock/institute/:uid", async (req, res) => {
+  try {
+    const i = await Institute.findOne({ uid: req.params.uid });
+    if (!i) return res.status(404).json({ success: false, message: "Institute not found" });
+    i.isBlocked = false;
+    await i.save();
+    res.json({ success: true, message: "Institute unblocked" });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =================================================
+   ADMIN — DELETE
+================================================= */
+router.delete("/delete/teacher/:uid", async (req, res) => {
+  try {
+    const result = await Teacher.deleteOne({ uid: req.params.uid });
+    res.json({ success: true, deletedCount: result.deletedCount });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.delete("/delete/institute/:uid", async (req, res) => {
+  try {
+    const result = await Institute.deleteOne({ uid: req.params.uid });
+    res.json({ success: true, deletedCount: result.deletedCount });
+  } catch {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 
 module.exports = router;
