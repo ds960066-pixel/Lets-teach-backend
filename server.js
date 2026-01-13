@@ -20,8 +20,6 @@ const adminRoutes = require("./routes/admin");
 const jobRoutes = require("./routes/job");
 const jobApplicationRoutes = require("./routes/jobApplication");
 const notificationRoutes = require("./routes/notification");
-
-/* 🔥 ADD THIS (MANUAL INSTITUTE ROUTES) */
 const manualInstituteRoutes = require("./routes/manualInstitute");
 
 /* ---------- App Init ---------- */
@@ -36,6 +34,7 @@ const io = new Server(server, {
 /* ---------- Middlewares ---------- */
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 /* ---------- Route Mounting ---------- */
 app.use("/api/teacher", teacherRoutes);
@@ -45,10 +44,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/job", jobRoutes);
 app.use("/api/job", jobApplicationRoutes);
-app.use("/uploads", express.static("uploads"));
 app.use("/api/notification", notificationRoutes);
-
-/* 🔥 VERY IMPORTANT */
 app.use("/api/manual-institute", manualInstituteRoutes);
 
 /* ---------- Basic Routes ---------- */
@@ -67,8 +63,6 @@ io.on("connection", (socket) => {
 
   socket.on("sendMessage", async (data) => {
     try {
-      console.log("🔥 SEND MESSAGE HIT:", data);
-
       const { senderUid, receiverUid, text, roomId } = data;
       if (!senderUid || !receiverUid || !text || !roomId) return;
 
@@ -79,10 +73,7 @@ io.on("connection", (socket) => {
         ]
       });
 
-      if (!invite) {
-        console.log("❌ Message blocked (no accepted invite)");
-        return;
-      }
+      if (!invite) return;
 
       const message = new Message({ senderUid, receiverUid, text });
       await message.save();
