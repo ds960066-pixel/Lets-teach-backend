@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Teacher = require("../models/Teacher");
+const upload = require("../utils/uploadResume");
 
 /* ======================================
    LOGIN CHECK (TEACHER) ✅ FIRST
@@ -15,6 +16,7 @@ router.get("/login-check/:uid", async (req, res) => {
 
     return res.json({ status: "OK" });
   } catch (err) {
+    console.error("Teacher login-check error:", err);
     return res.status(500).json({ status: "ERROR" });
   }
 });
@@ -54,100 +56,12 @@ router.post("/create", async (req, res) => {
 
     await teacher.save();
 
-    res.json({ success: true, teacher });
-  } catch {
-    res.status(500).json({ success: false });
-  }
-});
-/* ======================================
-   SAVE / UPDATE RESUME
-   POST /api/teacher/resume
-====================================== */
-router.post("/resume", async (req, res) => {
-  try {
-    const { uid, summary, experienceDetails, education, skills } = req.body;
-
-    if (!uid || !summary || !education) {
-      return res.status(400).json({
-        success: false,
-        message: "Required resume fields missing"
-      });
-    }
-
-    const teacher = await Teacher.findOne({ uid });
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found"
-      });
-    }
-
-    teacher.resume = {
-      summary,
-      experienceDetails,
-      education,
-      skills: skills || [],
-      isComplete: true
-    };
-
-    await teacher.save();
-
-    res.json({
-      success: true,
-      message: "Resume saved successfully"
-    });
+    return res.json({ success: true, teacher });
   } catch (err) {
-    console.error("Resume save error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
+    console.error("Teacher create error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
-const upload = require("../utils/uploadResume");
-
-/* ======================================
-   UPLOAD RESUME (PDF)
-   POST /api/teacher/upload-resume/:uid
-====================================== */
-router.post(
-  "/upload-resume/:uid",
-  upload.single("resume"),
-  async (req, res) => {
-    try {
-      const teacher = await Teacher.findOne({ uid: req.params.uid });
-
-      if (!teacher) {
-        return res.status(404).json({
-          success: false,
-          message: "Teacher not found"
-        });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "Resume PDF required"
-        });
-      }
-
-      teacher.resumeUrl = `/uploads/resumes/${req.file.filename}`;
-      await teacher.save();
-
-      res.json({
-        success: true,
-        message: "Resume uploaded successfully",
-        resumeUrl: teacher.resumeUrl
-      });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        message: "Server error"
-      });
-    }
-  }
-);
-
 
 /* ======================================
    PUBLIC BROWSE (NO LOGIN)
@@ -161,12 +75,13 @@ router.get("/public", async (req, res) => {
     if (req.query.subject) filter.subject = req.query.subject;
 
     const teachers = await Teacher.find(filter).select(
-      "uid name subject city experience role"
+      "uid name subject city experience role verificationStatus"
     );
 
-    res.json({ success: true, teachers });
-  } catch {
-    res.status(500).json({ success: false });
+    return res.json({ success: true, teachers });
+  } catch (err) {
+    console.error("Teacher public browse error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -185,19 +100,21 @@ router.get("/browse", async (req, res) => {
       "uid name subject city experience role verificationStatus"
     );
 
-    res.json({ success: true, teachers });
-  } catch {
-    res.status(500).json({ success: false });
+    return res.json({ success: true, teachers });
+  } catch (err) {
+    console.error("Teacher browse error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
 /* ======================================
-   SAVE / UPDATE TEACHER RESUME ⭐⭐⭐
+   SAVE / UPDATE RESUME (JSON)
    POST /api/teacher/resume/:uid
+   body: { about, education, skills }
 ====================================== */
 router.post("/resume/:uid", async (req, res) => {
   try {
-    const { about, skills, education } = req.body;
+    const { about, education, skills } = req.body;
 
     const teacher = await Teacher.findOne({ uid: req.params.uid });
     if (!teacher) {
@@ -207,44 +124,60 @@ router.post("/resume/:uid", async (req, res) => {
       });
     }
 
-    teacher.about = about || teacher.about;
-    teacher.skills = Array.isArray(skills) ? skills : teacher.skills;
-    teacher.education = education || teacher.education;
+    // Save in main fields (used by old UI)
+    teacher.about = typeof about === "string" ? about.trim() : teacher.about;
+    teacher.education =
+      typeof education === "string" ? education.trim() : teacher.education;
+    teacher.skills = Array.isArray(skills)
+      ? skills.map(s => String(s).trim()).filter(Boolean)
+      : teacher.skills;
+
+    // Also save in resume object (mandatory workflow)
+    teacher.resume = teacher.resume || {};
+    teacher.resume.summary = teacher.about || teacher.resume.summary;
+    teacher.resume.education = teacher.education || teacher.resume.education;
+    teacher.resume.skills = teacher.skills || teacher.resume.skills;
+
+    const isComplete =
+      !!teacher.about &&
+      !!teacher.education &&
+      Array.isArray(teacher.skills) &&
+      teacher.skills.length > 0;
+
+    teacher.resume.isComplete = isComplete;
 
     await teacher.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Resume saved successfully",
       resume: {
         about: teacher.about,
+        education: teacher.education,
         skills: teacher.skills,
-        education: teacher.education
+        isComplete: teacher.resume.isComplete,
+        pdfUrl: teacher.resume.pdfUrl || null,
+        resumeUrl: teacher.resumeUrl || null
       }
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Resume save error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
+
 /* ======================================
-   UPDATE TEACHER RESUME
-   POST /api/teacher/resume
+   UPLOAD RESUME (PDF)
+   POST /api/teacher/upload-resume/:uid
+   form-data: resume=<pdf>
 ====================================== */
-router.post("/resume", async (req, res) => {
+router.post("/upload-resume/:uid", upload.single("resume"), async (req, res) => {
   try {
-    const { uid, about, skills, education } = req.body;
+    const teacher = await Teacher.findOne({ uid: req.params.uid });
 
-    if (!uid) {
-      return res.status(400).json({
-        success: false,
-        message: "UID required"
-      });
-    }
-
-    const teacher = await Teacher.findOne({ uid });
     if (!teacher) {
       return res.status(404).json({
         success: false,
@@ -252,27 +185,36 @@ router.post("/resume", async (req, res) => {
       });
     }
 
-    teacher.about = about;
-    teacher.education = education;
-    teacher.skills = Array.isArray(skills)
-      ? skills
-      : (skills || "").split(",").map(s => s.trim());
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume PDF required"
+      });
+    }
+
+    const fileUrl = `/uploads/resumes/${req.file.filename}`;
+
+    // keep both (compatibility + new flow)
+    teacher.resumeUrl = fileUrl;
+    teacher.resume = teacher.resume || {};
+    teacher.resume.pdfUrl = fileUrl;
 
     await teacher.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Resume updated successfully"
+      message: "Resume uploaded successfully",
+      resumeUrl: teacher.resumeUrl,
+      pdfUrl: teacher.resume.pdfUrl
     });
   } catch (err) {
-    console.error("Resume update error:", err);
-    res.status(500).json({
+    console.error("Resume upload error:", err);
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
-
 
 /* ======================================
    GET TEACHER BY UID (PROFILE)
@@ -290,9 +232,10 @@ router.get("/:uid", async (req, res) => {
       });
     }
 
-    res.json({ success: true, teacher });
-  } catch {
-    res.status(500).json({ success: false });
+    return res.json({ success: true, teacher });
+  } catch (err) {
+    console.error("Teacher get error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
