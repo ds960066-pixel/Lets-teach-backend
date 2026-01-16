@@ -4,12 +4,15 @@ const router = express.Router();
 
 const Job = require("../models/Job");
 const Teacher = require("../models/Teacher");
-const Invite = require("../models/Invite");
+const Invite = require("../models/Invite"); // (agar use nahi ho raha to hata bhi sakte ho)
 const JobApplication = require("../models/JobApplication");
 const Notification = require("../models/Notification");
 
+// ✅ Base URL for making resume PDF link clickable
+const BASE_URL = process.env.BASE_URL || "https://express-hello-world-uh96.onrender.com";
+
 /* =================================================
-   APPLY TO JOB (TEACHER) ✅ RESUME MANDATORY
+   APPLY TO JOB (TEACHER) ✅ RESUME + PDF MANDATORY
    POST /api/job/apply
 ================================================= */
 router.post("/apply", async (req, res) => {
@@ -40,16 +43,21 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    /* 🔒 RESUME MANDATORY CHECK (FINAL) */
-    if (
-      !teacher.about ||
-      !teacher.education ||
-      !teacher.skills ||
-      teacher.skills.length === 0
-    ) {
+    /* 🔒 RESUME MANDATORY CHECK (FINAL + PDF) */
+    const resumeComplete =
+      teacher.about &&
+      teacher.about.trim().length > 0 &&
+      teacher.education &&
+      teacher.education.trim().length > 0 &&
+      Array.isArray(teacher.skills) &&
+      teacher.skills.length > 0 &&
+      teacher.resumeUrl &&
+      teacher.resumeUrl.trim().length > 0;
+
+    if (!resumeComplete) {
       return res.status(400).json({
         success: false,
-        message: "Please complete your resume before applying for jobs"
+        message: "Please complete resume + upload PDF before applying"
       });
     }
 
@@ -75,7 +83,8 @@ router.post("/apply", async (req, res) => {
       resumeSnapshot: {
         about: teacher.about,
         education: teacher.education,
-        skills: teacher.skills
+        skills: teacher.skills,
+        resumeUrl: teacher.resumeUrl // ✅ store pdf url snapshot too
       }
     });
 
@@ -121,13 +130,25 @@ router.get("/applications/institute/:uid", async (req, res) => {
 
     const teacherUids = [...new Set(applications.map(a => a.teacherUid))];
 
-    // ✅ Teacher details (resumeUrl must exist in Teacher model)
     const teachers = await Teacher.find({ uid: { $in: teacherUids } }).select(
       "uid name phone subject city resumeUrl about education skills"
     );
 
     const map = {};
-    teachers.forEach(t => (map[t.uid] = t));
+    teachers.forEach(t => {
+      const obj = t.toObject();
+
+      // ✅ Make absolute link for PDF (if resumeUrl stored like "/uploads/abc.pdf")
+      if (obj.resumeUrl) {
+        obj.resumePdfLink = obj.resumeUrl.startsWith("http")
+          ? obj.resumeUrl
+          : `${BASE_URL}${obj.resumeUrl}`;
+      } else {
+        obj.resumePdfLink = "";
+      }
+
+      map[obj.uid] = obj;
+    });
 
     const enriched = applications.map(a => ({
       ...a.toObject(),
