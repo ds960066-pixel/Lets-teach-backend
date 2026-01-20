@@ -45,6 +45,14 @@ const jobSchema = new mongoose.Schema(
       maxlength: 2000
     },
 
+    // ✅ Posting date (show on jobs page)
+    // Best: auto set by backend (avoid fake dates)
+    postedAt: {
+      type: Date,
+      default: Date.now,
+      index: true
+    },
+
     status: {
       type: String,
       enum: ["open", "closed"],
