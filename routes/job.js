@@ -43,15 +43,23 @@ router.post("/create", async (req, res) => {
       });
     }
 
+    const safeRole =
+      role === "part-time" || role === "full-time" || role === "both"
+        ? role
+        : "both";
+
     const job = await Job.create({
-      instituteUid,
+      instituteUid: String(instituteUid).trim(),
       title: String(title).trim(),
       subject: String(subject).trim(),
       city: String(city).trim(),
-      role: role ? String(role).trim() : "both",
+      role: safeRole,
       salary: salary ? String(salary).trim() : "Negotiable",
       description: description ? String(description).trim() : "",
-      status: "open"
+      status: "open",
+
+      // ✅ job post date (best: backend sets it)
+      postedAt: new Date()
     });
 
     return res.json({
@@ -76,12 +84,18 @@ router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
-    if (req.query.city) filter.city = req.query.city;
-    if (req.query.subject) filter.subject = req.query.subject;
-    if (req.query.role) filter.role = req.query.role;
+    if (req.query.city) filter.city = String(req.query.city).trim();
+    if (req.query.subject) filter.subject = String(req.query.subject).trim();
+
+    // ✅ IMPORTANT:
+    // If user selects part-time => show part-time + both
+    // If user selects full-time => show full-time + both
+    // If user selects both/empty => no role filter
+    if (req.query.role === "part-time") filter.role = { $in: ["part-time", "both"] };
+    if (req.query.role === "full-time") filter.role = { $in: ["full-time", "both"] };
 
     const jobs = await Job.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ postedAt: -1, createdAt: -1 })
       .limit(50);
 
     return res.json({
@@ -104,7 +118,7 @@ router.get("/browse", async (req, res) => {
 router.get("/institute/:uid", async (req, res) => {
   try {
     const jobs = await Job.find({ instituteUid: req.params.uid })
-      .sort({ createdAt: -1 });
+      .sort({ postedAt: -1, createdAt: -1 });
 
     return res.json({
       success: true,
