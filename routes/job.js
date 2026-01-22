@@ -5,7 +5,7 @@ const Job = require("../models/Job");
 const Institute = require("../models/Institute");
 
 /* =================================================
-   CREATE JOB (ONLY VERIFIED INSTITUTE)
+   CREATE JOB (OTP VERIFIED INSTITUTE)
    POST /api/job/create
 ================================================= */
 router.post("/create", async (req, res) => {
@@ -27,7 +27,9 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    const institute = await Institute.findOne({ uid: instituteUid });
+    const uid = String(instituteUid).trim();
+
+    const institute = await Institute.findOne({ uid });
 
     if (!institute) {
       return res.status(404).json({
@@ -36,10 +38,28 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    if (institute.isBlocked || institute.verificationStatus !== "verified") {
+    // ✅ SAFETY: blocked institute cannot post
+    if (institute.isBlocked) {
       return res.status(403).json({
         success: false,
-        message: "Institute not verified to post jobs"
+        message: "Institute blocked"
+      });
+    }
+
+    // ✅ OTP required (verificationStatus is NOT required now)
+    if (!institute.phoneVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify phone (OTP) to post jobs"
+      });
+    }
+
+    // ✅ Posting limit: max 3 open jobs at a time
+    const openCount = await Job.countDocuments({ instituteUid: uid, status: "open" });
+    if (openCount >= 3) {
+      return res.status(429).json({
+        success: false,
+        message: "Limit reached: Max 3 active jobs allowed"
       });
     }
 
@@ -49,7 +69,7 @@ router.post("/create", async (req, res) => {
         : "both";
 
     const job = await Job.create({
-      instituteUid: String(instituteUid).trim(),
+      instituteUid: uid,
       title: String(title).trim(),
       subject: String(subject).trim(),
       city: String(city).trim(),
@@ -57,8 +77,6 @@ router.post("/create", async (req, res) => {
       salary: salary ? String(salary).trim() : "Negotiable",
       description: description ? String(description).trim() : "",
       status: "open",
-
-      // ✅ job post date (best: backend sets it)
       postedAt: new Date()
     });
 
@@ -84,13 +102,11 @@ router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
-    if (req.query.city) filter.city = String(req.query.city).trim();
-    if (req.query.subject) filter.subject = String(req.query.subject).trim();
+    // ✅ better matching (case-insensitive exact)
+    if (req.query.city) filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
+    if (req.query.subject) filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
 
-    // ✅ IMPORTANT:
-    // If user selects part-time => show part-time + both
-    // If user selects full-time => show full-time + both
-    // If user selects both/empty => no role filter
+    // role logic: part-time => part-time + both, full-time => full-time + both
     if (req.query.role === "part-time") filter.role = { $in: ["part-time", "both"] };
     if (req.query.role === "full-time") filter.role = { $in: ["full-time", "both"] };
 
@@ -117,7 +133,7 @@ router.get("/browse", async (req, res) => {
 ================================================= */
 router.get("/institute/:uid", async (req, res) => {
   try {
-    const jobs = await Job.find({ instituteUid: req.params.uid })
+    const jobs = await Job.find({ instituteUid: String(req.params.uid).trim() })
       .sort({ postedAt: -1, createdAt: -1 });
 
     return res.json({
