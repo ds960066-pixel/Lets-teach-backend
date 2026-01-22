@@ -10,15 +10,7 @@ const Institute = require("../models/Institute");
 ================================================= */
 router.post("/create", async (req, res) => {
   try {
-    const {
-      instituteUid,
-      title,
-      subject,
-      city,
-      role,
-      salary,
-      description
-    } = req.body;
+    const { instituteUid, title, subject, city, role, salary, description } = req.body;
 
     if (!instituteUid || !title || !subject || !city) {
       return res.status(400).json({
@@ -38,7 +30,6 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // ✅ SAFETY: blocked institute cannot post
     if (institute.isBlocked) {
       return res.status(403).json({
         success: false,
@@ -46,7 +37,6 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // ✅ OTP required (verificationStatus is NOT required now)
     if (!institute.phoneVerified) {
       return res.status(403).json({
         success: false,
@@ -54,7 +44,7 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // ✅ Posting limit: max 3 open jobs at a time
+    // anti-spam: max 3 open jobs
     const openCount = await Job.countDocuments({ instituteUid: uid, status: "open" });
     if (openCount >= 3) {
       return res.status(429).json({
@@ -102,11 +92,10 @@ router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
-    // ✅ better matching (case-insensitive exact)
+    // case-insensitive exact match
     if (req.query.city) filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
     if (req.query.subject) filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
 
-    // role logic: part-time => part-time + both, full-time => full-time + both
     if (req.query.role === "part-time") filter.role = { $in: ["part-time", "both"] };
     if (req.query.role === "full-time") filter.role = { $in: ["full-time", "both"] };
 
@@ -133,7 +122,9 @@ router.get("/browse", async (req, res) => {
 ================================================= */
 router.get("/institute/:uid", async (req, res) => {
   try {
-    const jobs = await Job.find({ instituteUid: String(req.params.uid).trim() })
+    const uid = String(req.params.uid).trim();
+
+    const jobs = await Job.find({ instituteUid: uid })
       .sort({ postedAt: -1, createdAt: -1 });
 
     return res.json({
