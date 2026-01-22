@@ -69,7 +69,26 @@ const instituteSchema = new mongoose.Schema(
 
     verificationNote: {
       type: String,
-      trim: true
+      trim: true,
+      default: ""
+    },
+
+    /* =========================
+       PHONE OTP (NEW)
+       - phoneVerified: OTP done or not
+       - phoneE164: verified phone in +91... format (from Firebase token)
+    ========================= */
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+
+    phoneE164: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true
     },
 
     /* =========================
