@@ -2,9 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const Institute = require("../models/Institute");
-
-// ✅ Firebase Admin (add this file next step)
-// const admin = require("../firebaseAdmin");
+const admin = require("../firebaseAdmin"); // ✅ REAL Firebase Admin
 
 /* ======================================
    LOGIN CHECK (INSTITUTE)
@@ -22,7 +20,6 @@ router.get("/login-check/:uid", async (req, res) => {
       return res.json({ status: "BLOCKED" });
     }
 
-    // ✅ extra info for frontend
     return res.json({
       status: "OK",
       phoneVerified: !!institute.phoneVerified,
@@ -49,7 +46,9 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    const existing = await Institute.findOne({ uid: String(uid).trim() });
+    const cleanUid = String(uid).trim();
+
+    const existing = await Institute.findOne({ uid: cleanUid });
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -58,13 +57,13 @@ router.post("/create", async (req, res) => {
     }
 
     const institute = new Institute({
-      uid: String(uid).trim(),
+      uid: cleanUid,
       name: String(name).trim(),
       phone: String(phone).trim(),
       city: String(city).trim(),
       address: address ? String(address).trim() : "",
       subjectsNeeded: Array.isArray(subjectsNeeded) ? subjectsNeeded : []
-      // phoneVerified default false रहेगा
+      // phoneVerified default false
     });
 
     await institute.save();
@@ -84,7 +83,7 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   VERIFY PHONE (OTP) ✅ NEW
+   VERIFY PHONE (OTP) ✅ REAL
    POST /api/institute/verify-phone
    body: { uid, idToken }
 ====================================== */
@@ -115,19 +114,16 @@ router.post("/verify-phone", async (req, res) => {
       });
     }
 
-    // ✅ Firebase token verify (enable after firebaseAdmin.js added)
-    // const decoded = await admin.auth().verifyIdToken(idToken);
-    // const phone = decoded.phone_number || "";
-    // if (!phone) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Phone not found in token"
-    //   });
-    // }
+    // ✅ Verify Firebase ID token
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const phone = decoded.phone_number || "";
 
-    // ✅ TEMP (until Firebase admin wired): allow marking verified if you trust frontend
-    // ⚠️ NOTE: Once firebaseAdmin is ready, remove temp line and use decoded phone.
-    const phone = institute.phoneE164 || institute.phone || "";
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone not found in token"
+      });
+    }
 
     institute.phoneVerified = true;
     institute.phoneE164 = phone;
