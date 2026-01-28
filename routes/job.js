@@ -5,7 +5,7 @@ const Job = require("../models/Job");
 const Institute = require("../models/Institute");
 
 /* =================================================
-   CREATE JOB (OTP VERIFIED INSTITUTE)
+   CREATE JOB (STABLE – NO OTP GATE)
    POST /api/job/create
 ================================================= */
 router.post("/create", async (req, res) => {
@@ -30,6 +30,7 @@ router.post("/create", async (req, res) => {
       });
     }
 
+    // ✅ ONLY BLOCK CHECK (NO OTP, NO VERIFICATION)
     if (institute.isBlocked) {
       return res.status(403).json({
         success: false,
@@ -37,15 +38,12 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    if (!institute.phoneVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Please verify phone (OTP) to post jobs"
-      });
-    }
+    // ✅ Anti-spam: max 3 open jobs
+    const openCount = await Job.countDocuments({
+      instituteUid: uid,
+      status: "open"
+    });
 
-    // anti-spam: max 3 open jobs
-    const openCount = await Job.countDocuments({ instituteUid: uid, status: "open" });
     if (openCount >= 3) {
       return res.status(429).json({
         success: false,
@@ -85,28 +83,29 @@ router.post("/create", async (req, res) => {
 });
 
 /* =================================================
-   PUBLIC BROWSE JOBS (ONLY OPEN)
-   GET /api/job/browse?city=&subject=&role=
+   PUBLIC BROWSE JOBS
 ================================================= */
 router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
-    // case-insensitive exact match
-    if (req.query.city) filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
-    if (req.query.subject) filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
+    if (req.query.city)
+      filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
 
-    if (req.query.role === "part-time") filter.role = { $in: ["part-time", "both"] };
-    if (req.query.role === "full-time") filter.role = { $in: ["full-time", "both"] };
+    if (req.query.subject)
+      filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
+
+    if (req.query.role === "part-time")
+      filter.role = { $in: ["part-time", "both"] };
+
+    if (req.query.role === "full-time")
+      filter.role = { $in: ["full-time", "both"] };
 
     const jobs = await Job.find(filter)
       .sort({ postedAt: -1, createdAt: -1 })
       .limit(50);
 
-    return res.json({
-      success: true,
-      jobs
-    });
+    return res.json({ success: true, jobs });
   } catch (err) {
     console.error("Job browse error:", err);
     return res.status(500).json({
@@ -117,8 +116,7 @@ router.get("/browse", async (req, res) => {
 });
 
 /* =================================================
-   INSTITUTE JOBS (DASHBOARD)
-   GET /api/job/institute/:uid
+   INSTITUTE JOBS
 ================================================= */
 router.get("/institute/:uid", async (req, res) => {
   try {
@@ -127,10 +125,7 @@ router.get("/institute/:uid", async (req, res) => {
     const jobs = await Job.find({ instituteUid: uid })
       .sort({ postedAt: -1, createdAt: -1 });
 
-    return res.json({
-      success: true,
-      jobs
-    });
+    return res.json({ success: true, jobs });
   } catch (err) {
     console.error("Institute jobs error:", err);
     return res.status(500).json({
@@ -142,7 +137,6 @@ router.get("/institute/:uid", async (req, res) => {
 
 /* =================================================
    CLOSE JOB
-   POST /api/job/close/:jobId
 ================================================= */
 router.post("/close/:jobId", async (req, res) => {
   try {
