@@ -1,0 +1,10 @@
+.env
+node_modules
+.expo
+lets-teach-app/
+Lets-teach-backend/
+lets-teach-web-v2/
+lets-teach-web-v2-old/
+*.png
+desktop.ini
+Microsoft Edge.lnk
