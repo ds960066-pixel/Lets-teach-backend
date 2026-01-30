@@ -4,30 +4,52 @@ const jobSchema = new mongoose.Schema(
   {
     instituteUid: {
       type: String,
-      required: true
+      required: true,
+      index: true
     },
+
     title: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
+
     subject: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
+      index: true
     },
+
     city: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
+      index: true
     },
-    experience: {
-      type: String
-    },
+
     role: {
       type: String,
       enum: ["part-time", "full-time", "both"],
       default: "both"
     },
+
+    salary: {
+      type: String,
+      trim: true
+    },
+
     description: {
-      type: String
+      type: String,
+      trim: true,
+      maxlength: 2000
+    },
+
+    status: {
+      type: String,
+      enum: ["open", "closed"],
+      default: "open",
+      index: true
     }
   },
   { timestamps: true }
