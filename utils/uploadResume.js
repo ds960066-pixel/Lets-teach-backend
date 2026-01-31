@@ -1,17 +1,15 @@
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("./config/cloudinary");
+const cloudinary = require("../config/cloudinary");
 
 // Cloudinary storage setup
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary,
   params: {
     folder: "resumes",
-    resource_type: "raw", // important for pdf/doc files
+    resource_type: "raw", // PDF support
     allowed_formats: ["pdf"],
-    public_id: (req, file) => {
-      return "resume-" + Date.now();
-    }
+    public_id: () => "resume-" + Date.now()
   }
 });
 
@@ -26,5 +24,5 @@ const fileFilter = (req, file, cb) => {
 module.exports = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
