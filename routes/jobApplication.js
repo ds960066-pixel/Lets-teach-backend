@@ -2,10 +2,10 @@ console.log("🔥 jobApplication routes loaded");
 const express = require("express");
 const router = express.Router();
 
-const Job = require("../models/Job");
+const Job = require("../models/job");
 const Teacher = require("../models/Teacher");
 const Invite = require("../models/Invite");
-const JobApplication = require("../models/JobApplication");
+const JobApplication = require("../models/jobApplication");
 const Notification = require("../models/Notification");
 
 /* =================================================
