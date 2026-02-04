@@ -1,40 +1,106 @@
-require("dotenv").config();
+console.log("🔥 SERVER FILE LOADED FROM DESKTOP");
 
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+require("dotenv").config();
 
-/* ---------- ROUTES ---------- */
+/* ---------- Models ---------- */
+const Message = require("./models/Message");
+const Invite = require("./models/Invite");
+const Teacher = require("./models/Teacher");
+const Institute = require("./models/Institute");
+
+/* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
+const instituteRoutes = require("./routes/institute");
 const inviteRoutes = require("./routes/invite");
 const chatRoutes = require("./routes/chat");
-const instituteRoutes = require("./routes/institute");
+const adminRoutes = require("./routes/admin");
+const jobRoutes = require("./routes/job");
+const jobApplicationRoutes = require("./routes/jobApplication");
+const notificationRoutes = require("./routes/notification");
+const manualInstituteRoutes = require("./routes/manualInstitute");
 
-/* ---------- APP INIT ---------- */
+/* ---------- App Init ---------- */
 const app = express();
 const server = http.createServer(app);
 
-/* ---------- SOCKET.IO ---------- */
+/* ---------- Socket.IO ---------- */
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
-  },
+    methods: ["GET", "POST"]
+  }
 });
 
-/* ---------- MIDDLEWARE ---------- */
+/* ---------- Middlewares ---------- */
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
-/* ---------- ROUTE REGISTRATION ---------- */
+/* ---------- ROUTE MOUNTING (EXISTING FLOW) ---------- */
 app.use("/api/teacher", teacherRoutes);
+app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/institute", instituteRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/job", jobRoutes);
+app.use("/api/job", jobApplicationRoutes);
+app.use("/api/notification", notificationRoutes);
+app.use("/api/manual-institute", manualInstituteRoutes);
 
-/* ---------- BASIC TEST ROUTES ---------- */
+/* =====================================================
+   🔥 PUBLIC HOMEPAGE APIs (ROOT LEVEL – FINAL FIX)
+   These are REQUIRED for frontend homepage
+===================================================== */
+
+/* ---------- PUBLIC TEACHERS ---------- */
+app.get("/api/teachers", async (req, res) => {
+  try {
+    const filter = { isBlocked: false };
+
+    if (req.query.city) filter.city = req.query.city;
+    if (req.query.subject) filter.subject = req.query.subject;
+
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience role verificationStatus"
+    );
+
+    return res.json({ success: true, teachers });
+  } catch (err) {
+    console.error("Error /api/teachers:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ---------- PUBLIC INSTITUTES ---------- */
+app.get("/api/institutes", async (req, res) => {
+  try {
+    const filter = { isBlocked: false };
+
+    if (req.query.city) filter.city = req.query.city;
+
+    const institutes = await Institute.find(filter).select(
+      "uid name city verificationStatus"
+    );
+
+    return res.json({ success: true, institutes });
+  } catch (err) {
+    console.error("Error /api/institutes:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ---------- BASIC ROUTES ---------- */
 app.get("/", (req, res) => {
   res.send("Lets Teach Backend is Live 🚀");
 });
@@ -43,7 +109,7 @@ app.get("/health", (req, res) => {
   res.send("Server is healthy ✅");
 });
 
-/* ---------- SOCKET EVENTS ---------- */
+/* ---------- SOCKET.IO (REALTIME CHAT) ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -54,14 +120,36 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", async (data) => {
-    const { senderUid, receiverUid, text, roomId } = data;
-    if (!senderUid || !receiverUid || !text || !roomId) return;
+    try {
+      const { senderUid, receiverUid, text, roomId } = data;
+      if (!senderUid || !receiverUid || !text || !roomId) return;
 
-    io.to(roomId).emit("receiveMessage", {
-      senderUid,
-      receiverUid,
-      text,
-    });
+      const invite = await Invite.findOne({
+        $or: [
+          { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
+          { fromUid: receiverUid, toUid: senderUid, status: "accepted" }
+        ]
+      });
+
+      if (!invite) return;
+
+      const message = new Message({
+        senderUid,
+        receiverUid,
+        text
+      });
+
+      await message.save();
+
+      io.to(roomId).emit("receiveMessage", {
+        senderUid,
+        receiverUid,
+        text,
+        createdAt: message.createdAt
+      });
+    } catch (err) {
+      console.error("sendMessage error:", err);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -69,13 +157,13 @@ io.on("connection", (socket) => {
   });
 });
 
-/* ---------- DATABASE ---------- */
+/* ---------- MongoDB ---------- */
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB error:", err.message));
+  .catch((err) => console.log("Mongo error:", err.message));
 
-/* ---------- START SERVER ---------- */
+/* ---------- Start Server ---------- */
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
