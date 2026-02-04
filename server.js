@@ -41,21 +41,30 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-/* ---------- ROUTE MOUNTING (EXISTING FLOW) ---------- */
+/* =================================================
+   ROUTE MOUNTING (FINAL & CLEAN)
+================================================= */
+
+/* Core */
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
+
+/* Jobs (NO OTP, SINGLE SOURCE) */
 app.use("/api/job", jobRoutes);
-app.use("/api/job", jobApplicationRoutes);
+
+/* Job Applications (SEPARATE PATH) */
+app.use("/api/job-application", jobApplicationRoutes);
+
+/* Others */
 app.use("/api/notification", notificationRoutes);
 app.use("/api/manual-institute", manualInstituteRoutes);
 
-/* =====================================================
-   🔥 PUBLIC HOMEPAGE APIs (ROOT LEVEL – FINAL FIX)
-   These are REQUIRED for frontend homepage
-===================================================== */
+/* =================================================
+   PUBLIC HOMEPAGE APIs
+================================================= */
 
 /* ---------- PUBLIC TEACHERS ---------- */
 app.get("/api/teachers", async (req, res) => {
@@ -109,7 +118,9 @@ app.get("/health", (req, res) => {
   res.send("Server is healthy ✅");
 });
 
-/* ---------- SOCKET.IO (REALTIME CHAT) ---------- */
+/* =================================================
+   SOCKET.IO – REALTIME CHAT
+================================================= */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
