@@ -4,7 +4,7 @@ const Teacher = require("../models/Teacher");
 const upload = require("../utils/uploadResume");
 
 /* ======================================
-   LOGIN CHECK (TEACHER) ✅ FIRST
+   LOGIN CHECK (TEACHER)
    GET /api/teacher/login-check/:uid
 ====================================== */
 router.get("/login-check/:uid", async (req, res) => {
@@ -64,6 +64,28 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
+   🔥 PUBLIC TEACHERS (HOMEPAGE ALIAS)
+   GET /api/teachers
+====================================== */
+router.get("/teachers", async (req, res) => {
+  try {
+    const filter = { isBlocked: false };
+
+    if (req.query.city) filter.city = req.query.city;
+    if (req.query.subject) filter.subject = req.query.subject;
+
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience role verificationStatus"
+    );
+
+    return res.json({ success: true, teachers });
+  } catch (err) {
+    console.error("Teachers alias error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* ======================================
    PUBLIC BROWSE (NO LOGIN)
    GET /api/teacher/public
 ====================================== */
@@ -86,7 +108,7 @@ router.get("/public", async (req, res) => {
 });
 
 /* ======================================
-   BROWSE AFTER LOGIN (MIX)
+   BROWSE AFTER LOGIN
    GET /api/teacher/browse
 ====================================== */
 router.get("/browse", async (req, res) => {
@@ -110,7 +132,6 @@ router.get("/browse", async (req, res) => {
 /* ======================================
    SAVE / UPDATE RESUME (JSON)
    POST /api/teacher/resume/:uid
-   body: { about, education, skills }
 ====================================== */
 router.post("/resume/:uid", async (req, res) => {
   try {
@@ -124,7 +145,6 @@ router.post("/resume/:uid", async (req, res) => {
       });
     }
 
-    // Save in main fields (used by old UI)
     teacher.about = typeof about === "string" ? about.trim() : teacher.about;
     teacher.education =
       typeof education === "string" ? education.trim() : teacher.education;
@@ -132,19 +152,16 @@ router.post("/resume/:uid", async (req, res) => {
       ? skills.map(s => String(s).trim()).filter(Boolean)
       : teacher.skills;
 
-    // Also save in resume object (mandatory workflow)
     teacher.resume = teacher.resume || {};
     teacher.resume.summary = teacher.about || teacher.resume.summary;
     teacher.resume.education = teacher.education || teacher.resume.education;
     teacher.resume.skills = teacher.skills || teacher.resume.skills;
 
-    const isComplete =
+    teacher.resume.isComplete =
       !!teacher.about &&
       !!teacher.education &&
       Array.isArray(teacher.skills) &&
       teacher.skills.length > 0;
-
-    teacher.resume.isComplete = isComplete;
 
     await teacher.save();
 
@@ -172,7 +189,6 @@ router.post("/resume/:uid", async (req, res) => {
 /* ======================================
    UPLOAD RESUME (PDF)
    POST /api/teacher/upload-resume/:uid
-   form-data: resume=<pdf>
 ====================================== */
 router.post("/upload-resume/:uid", upload.single("resume"), async (req, res) => {
   try {
@@ -194,7 +210,6 @@ router.post("/upload-resume/:uid", upload.single("resume"), async (req, res) => 
 
     const fileUrl = `/uploads/resumes/${req.file.filename}`;
 
-    // keep both (compatibility + new flow)
     teacher.resumeUrl = fileUrl;
     teacher.resume = teacher.resume || {};
     teacher.resume.pdfUrl = fileUrl;
