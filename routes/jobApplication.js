@@ -5,7 +5,7 @@ const router = express.Router();
 const Job = require("../models/job");
 const Teacher = require("../models/Teacher");
 const Invite = require("../models/Invite"); // (agar use nahi ho raha to hata bhi sakte ho)
-const JobApplication = require("../models/JobApplication");
+const JobApplication = require("../models/jobApplication");
 const Notification = require("../models/Notification");
 
 // ✅ Base URL for making resume PDF link clickable
