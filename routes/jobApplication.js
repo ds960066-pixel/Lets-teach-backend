@@ -5,7 +5,7 @@ const router = express.Router();
 const Job = require("../models/job");
 const Teacher = require("../models/Teacher");
 const Invite = require("../models/Invite");
-const JobApplication = require("../models/jobApplication");
+const JobApplication = require("../models/JobApplication");
 const Notification = require("../models/Notification");
 
 /* =================================================
