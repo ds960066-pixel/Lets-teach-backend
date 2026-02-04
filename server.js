@@ -10,6 +10,8 @@ require("dotenv").config();
 /* ---------- Models ---------- */
 const Message = require("./models/Message");
 const Invite = require("./models/Invite");
+const Teacher = require("./models/Teacher");
+const Institute = require("./models/Institute");
 
 /* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
@@ -28,7 +30,10 @@ const server = http.createServer(app);
 
 /* ---------- Socket.IO ---------- */
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
 
 /* ---------- Middlewares ---------- */
@@ -36,7 +41,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-/* ---------- Route Mounting ---------- */
+/* ---------- ROUTE MOUNTING (EXISTING FLOW) ---------- */
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
@@ -47,11 +52,64 @@ app.use("/api/job", jobApplicationRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/manual-institute", manualInstituteRoutes);
 
-/* ---------- Basic Routes ---------- */
-app.get("/", (req, res) => res.send("Lets Teach Backend is Live 🚀"));
-app.get("/health", (req, res) => res.send("Server is healthy ✅"));
+/* =====================================================
+   🔥 PUBLIC HOMEPAGE APIs (ROOT LEVEL – FINAL FIX)
+   These are REQUIRED for frontend homepage
+===================================================== */
 
-/* ---------- Socket.IO Realtime Chat ---------- */
+/* ---------- PUBLIC TEACHERS ---------- */
+app.get("/api/teachers", async (req, res) => {
+  try {
+    const filter = { isBlocked: false };
+
+    if (req.query.city) filter.city = req.query.city;
+    if (req.query.subject) filter.subject = req.query.subject;
+
+    const teachers = await Teacher.find(filter).select(
+      "uid name subject city experience role verificationStatus"
+    );
+
+    return res.json({ success: true, teachers });
+  } catch (err) {
+    console.error("Error /api/teachers:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ---------- PUBLIC INSTITUTES ---------- */
+app.get("/api/institutes", async (req, res) => {
+  try {
+    const filter = { isBlocked: false };
+
+    if (req.query.city) filter.city = req.query.city;
+
+    const institutes = await Institute.find(filter).select(
+      "uid name city verificationStatus"
+    );
+
+    return res.json({ success: true, institutes });
+  } catch (err) {
+    console.error("Error /api/institutes:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ---------- BASIC ROUTES ---------- */
+app.get("/", (req, res) => {
+  res.send("Lets Teach Backend is Live 🚀");
+});
+
+app.get("/health", (req, res) => {
+  res.send("Server is healthy ✅");
+});
+
+/* ---------- SOCKET.IO (REALTIME CHAT) ---------- */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -75,7 +133,12 @@ io.on("connection", (socket) => {
 
       if (!invite) return;
 
-      const message = new Message({ senderUid, receiverUid, text });
+      const message = new Message({
+        senderUid,
+        receiverUid,
+        text
+      });
+
       await message.save();
 
       io.to(roomId).emit("receiveMessage", {
