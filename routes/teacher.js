@@ -59,5 +59,64 @@ router.post("/create", async (req, res) => {
     return res.json({ success: true, teacher });
   } catch (err) {
     console.error("Teacher create error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
+});
+
+/* ======================================
+   UPLOAD RESUME PDF
+   POST /api/teacher/upload-resume/:uid
+====================================== */
+router.post(
+  "/upload-resume/:uid",
+  upload.single("resume"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded"
+        });
+      }
+
+      const resumeUrl = `/uploads/${req.file.filename}`;
+
+      await Teacher.updateOne(
+        { uid: req.params.uid },
+        { resumeUrl }
+      );
+
+      return res.json({
+        success: true,
+        message: "Resume uploaded",
+        resumeUrl
+      });
+    } catch (err) {
+      console.error("Resume upload error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Upload failed"
+      });
+    }
+  }
+);
+
+/* ======================================
+   GET TEACHER PROFILE
+   GET /api/teacher/:uid
+====================================== */
+router.get("/:uid", async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ uid: req.params.uid });
+    if (!teacher) return res.status(404).json({});
+
+    return res.json({ teacher });
+  } catch (err) {
+    return res.status(500).json({});
+  }
+});
+
+module.exports = router;
