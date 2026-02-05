@@ -67,6 +67,48 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
+   SAVE / UPDATE RESUME (TEXT DATA)
+   POST /api/teacher/resume
+====================================== */
+router.post("/resume", async (req, res) => {
+  try {
+    const { uid, about, education, skills } = req.body;
+
+    if (!uid || !about || !education || !Array.isArray(skills)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid resume data"
+      });
+    }
+
+    const teacher = await Teacher.findOne({ uid });
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    teacher.about = about;
+    teacher.education = education;
+    teacher.skills = skills;
+
+    await teacher.save();
+
+    return res.json({
+      success: true,
+      message: "Resume saved"
+    });
+  } catch (err) {
+    console.error("Resume save error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ======================================
    UPLOAD RESUME PDF
    POST /api/teacher/upload-resume/:uid
 ====================================== */
