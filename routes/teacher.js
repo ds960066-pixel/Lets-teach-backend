@@ -68,16 +68,17 @@ router.post("/create", async (req, res) => {
 
 /* ======================================
    SAVE / UPDATE RESUME (TEXT DATA)
-   POST /api/teacher/resume
+   POST /api/teacher/resume/:uid
 ====================================== */
-router.post("/resume", async (req, res) => {
+router.post("/resume/:uid", async (req, res) => {
   try {
-    const { uid, about, education, skills } = req.body;
+    const { about, education, skills } = req.body;
+    const uid = req.params.uid;
 
-    if (!uid || !about || !education || !Array.isArray(skills)) {
+    if (!about || !education || !Array.isArray(skills) || skills.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid resume data"
+        message: "All resume fields are required"
       });
     }
 
@@ -97,7 +98,7 @@ router.post("/resume", async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Resume saved"
+      message: "Resume saved successfully"
     });
   } catch (err) {
     console.error("Resume save error:", err);
@@ -133,7 +134,7 @@ router.post(
 
       return res.json({
         success: true,
-        message: "Resume uploaded",
+        message: "Resume uploaded successfully",
         resumeUrl
       });
     } catch (err) {
@@ -153,11 +154,20 @@ router.post(
 router.get("/:uid", async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ uid: req.params.uid });
-    if (!teacher) return res.status(404).json({});
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
 
     return res.json({ teacher });
   } catch (err) {
-    return res.status(500).json({});
+    console.error("Get teacher error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
