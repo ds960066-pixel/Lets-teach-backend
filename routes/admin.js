@@ -212,4 +212,60 @@ router.post("/link-manual-institute", async (req, res) => {
   }
 });
 
+/* =================================================
+   ADMIN — ALL TEACHERS (SEARCH)
+   GET /api/admin/all/teachers
+================================================= */
+router.get("/all/teachers", async (req, res) => {
+  try {
+    const { uid, city, subject } = req.query;
+
+    const filter = {};
+    if (uid) filter.uid = uid;
+    if (city) filter.city = new RegExp(city, "i");
+    if (subject) filter.subject = new RegExp(subject, "i");
+
+    const teachers = await Teacher.find(filter).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      teachers
+    });
+  } catch (err) {
+    console.error("Admin all teachers error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   ADMIN — ALL INSTITUTES (SEARCH)
+   GET /api/admin/all/institutes
+================================================= */
+router.get("/all/institutes", async (req, res) => {
+  try {
+    const { uid, city } = req.query;
+
+    const filter = {};
+    if (uid) filter.uid = uid;
+    if (city) filter.city = new RegExp(city, "i");
+
+    const institutes = await Institute.find(filter).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      institutes
+    });
+  } catch (err) {
+    console.error("Admin all institutes error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+
 module.exports = router;
