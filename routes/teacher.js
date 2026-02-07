@@ -67,7 +67,7 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   SAVE / UPDATE RESUME (TEXT DATA)
+   SAVE / UPDATE RESUME (TEXT DATA) ✅ FINAL
    POST /api/teacher/resume/:uid
 ====================================== */
 router.post("/resume/:uid", async (req, res) => {
@@ -75,7 +75,7 @@ router.post("/resume/:uid", async (req, res) => {
     const { about, education, skills } = req.body;
     const uid = req.params.uid;
 
-    if (!about || !education || !Array.isArray(skills) || skills.length === 0) {
+    if (!about || !education || !skills) {
       return res.status(400).json({
         success: false,
         message: "All resume fields are required"
@@ -90,9 +90,15 @@ router.post("/resume/:uid", async (req, res) => {
       });
     }
 
+    // 🔥 IMPORTANT FIX — skills ALWAYS ARRAY
     teacher.about = about;
     teacher.education = education;
-    teacher.skills = skills;
+    teacher.skills = Array.isArray(skills)
+      ? skills
+      : String(skills)
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean);
 
     await teacher.save();
 
@@ -154,20 +160,11 @@ router.post(
 router.get("/:uid", async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ uid: req.params.uid });
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: "Teacher not found"
-      });
-    }
+    if (!teacher) return res.status(404).json({});
 
     return res.json({ teacher });
   } catch (err) {
-    console.error("Get teacher error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
+    return res.status(500).json({});
   }
 });
 
