@@ -38,12 +38,12 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    const already = await JobApplication.findOne({
+    const alreadyApplied = await JobApplication.findOne({
       jobId,
       teacherUid: uid
     });
 
-    if (already) {
+    if (alreadyApplied) {
       return res.status(409).json({
         success: false,
         message: "Already applied"
