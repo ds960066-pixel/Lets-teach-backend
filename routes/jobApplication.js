@@ -51,3 +51,29 @@ router.post("/apply", async (req, res) => {
     }
 
     await JobApplication.create({
+      jobId,
+      teacherUid: uid,
+      instituteUid: job.instituteUid,
+      resumeSnapshot: {
+        about: teacher.resumeText || "",
+        skills: Array.isArray(teacher.skills) ? teacher.skills : [],
+        education: teacher.education || ""
+      },
+      status: "applied"
+    });
+
+    return res.json({
+      success: true,
+      message: "Job applied successfully"
+    });
+
+  } catch (err) {
+    console.error("Apply job error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+module.exports = router;
