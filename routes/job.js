@@ -89,17 +89,21 @@ router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
-    if (req.query.city)
+    if (req.query.city) {
       filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
+    }
 
-    if (req.query.subject)
+    if (req.query.subject) {
       filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
+    }
 
-    if (req.query.role === "part-time")
+    if (req.query.role === "part-time") {
       filter.role = { $in: ["part-time", "both"] };
+    }
 
-    if (req.query.role === "full-time")
+    if (req.query.role === "full-time") {
       filter.role = { $in: ["full-time", "both"] };
+    }
 
     const jobs = await Job.find(filter)
       .sort({ postedAt: -1, createdAt: -1 })
@@ -227,13 +231,3 @@ router.post("/close/:jobId", async (req, res) => {
       success: true,
       message: "Job closed"
     });
-  } catch (err) {
-    console.error("Job close error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-module.exports = router;
