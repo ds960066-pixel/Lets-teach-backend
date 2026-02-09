@@ -51,7 +51,8 @@ router.post("/create", async (req, res) => {
       subject,
       city,
       experience,
-      role
+      role,
+      verificationStatus: "unverified"
     });
 
     await teacher.save();
@@ -90,7 +91,6 @@ router.post("/resume/:uid", async (req, res) => {
       });
     }
 
-    // 🔥 IMPORTANT FIX — skills ALWAYS ARRAY
     teacher.about = about;
     teacher.education = education;
     teacher.skills = Array.isArray(skills)
@@ -160,11 +160,14 @@ router.post(
 router.get("/:uid", async (req, res) => {
   try {
     const teacher = await Teacher.findOne({ uid: req.params.uid });
-    if (!teacher) return res.status(404).json({});
+    if (!teacher) {
+      return res.status(404).json({ success: false });
+    }
 
-    return res.json({ teacher });
+    return res.json({ success: true, teacher });
   } catch (err) {
-    return res.status(500).json({});
+    console.error("Get teacher error:", err);
+    return res.status(500).json({ success: false });
   }
 });
 
