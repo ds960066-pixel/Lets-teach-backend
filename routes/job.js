@@ -3,9 +3,11 @@ const router = express.Router();
 
 const Job = require("../models/job");
 const Institute = require("../models/Institute");
+const Teacher = require("../models/Teacher");
+const JobApplication = require("../models/JobApplication");
 
 /* =================================================
-   CREATE JOB (FINAL – NO OTP / NO PHONE VERIFY)
+   CREATE JOB
    POST /api/job/create
 ================================================= */
 router.post("/create", async (req, res) => {
@@ -29,7 +31,6 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // ✅ ONLY BLOCK CHECK (NO OTP / NO PHONE VERIFY)
     if (institute.isBlocked) {
       return res.status(403).json({
         success: false,
@@ -37,7 +38,6 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // ✅ Anti-spam: max 3 open jobs
     const openCount = await Job.countDocuments({
       instituteUid: uid,
       status: "open"
@@ -108,6 +108,86 @@ router.get("/browse", async (req, res) => {
     return res.json({ success: true, jobs });
   } catch (err) {
     console.error("Job browse error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* =================================================
+   APPLY JOB (FINAL – ERROR FREE)
+   POST /api/job/apply
+================================================= */
+router.post("/apply", async (req, res) => {
+  try {
+    const { jobId, uid } = req.body;
+
+    if (!jobId || !uid) {
+      return res.status(400).json({
+        success: false,
+        message: "JobId or Teacher UID missing"
+      });
+    }
+
+    const teacher = await Teacher.findOne({ uid });
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    if (
+      !teacher.resumeText ||
+      !teacher.skills ||
+      !teacher.education
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Complete resume required before applying"
+      });
+    }
+
+    const job = await Job.findById(jobId);
+    if (!job || job.status !== "open") {
+      return res.status(404).json({
+        success: false,
+        message: "Job not available"
+      });
+    }
+
+    const already = await JobApplication.findOne({
+      jobId,
+      teacherUid: uid
+    });
+
+    if (already) {
+      return res.status(409).json({
+        success: false,
+        message: "Already applied for this job"
+      });
+    }
+
+    await JobApplication.create({
+      jobId,
+      teacherUid: uid,
+      instituteUid: job.instituteUid,
+      resumeSnapshot: {
+        about: teacher.resumeText,
+        skills: teacher.skills,
+        education: teacher.education
+      },
+      status: "applied"
+    });
+
+    return res.json({
+      success: true,
+      message: "Job applied successfully"
+    });
+
+  } catch (err) {
+    console.error("Job apply error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error"
