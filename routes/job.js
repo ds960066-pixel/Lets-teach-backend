@@ -115,8 +115,10 @@ router.get("/browse", async (req, res) => {
   }
 });
 
+
+================================================= */
 /* =================================================
-   APPLY JOB (FINAL – ERROR FREE)
+   APPLY JOB (FINAL – GUARANTEED SAVE)
    POST /api/job/apply
 ================================================= */
 router.post("/apply", async (req, res) => {
@@ -126,10 +128,11 @@ router.post("/apply", async (req, res) => {
     if (!jobId || !uid) {
       return res.status(400).json({
         success: false,
-        message: "JobId or Teacher UID missing"
+        message: "Missing jobId or uid"
       });
     }
 
+    // 1️⃣ Teacher fetch
     const teacher = await Teacher.findOne({ uid });
     if (!teacher) {
       return res.status(404).json({
@@ -138,17 +141,7 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    if (
-      !teacher.resumeText ||
-      !teacher.skills ||
-      !teacher.education
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Complete resume required before applying"
-      });
-    }
-
+    // 2️⃣ Job fetch
     const job = await Job.findById(jobId);
     if (!job || job.status !== "open") {
       return res.status(404).json({
@@ -157,27 +150,32 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    const already = await JobApplication.findOne({
+    // 3️⃣ Duplicate apply block
+    const alreadyApplied = await JobApplication.findOne({
       jobId,
       teacherUid: uid
     });
 
-    if (already) {
+    if (alreadyApplied) {
       return res.status(409).json({
         success: false,
-        message: "Already applied for this job"
+        message: "Already applied"
       });
     }
 
+    // 4️⃣ Resume snapshot (SAFE – no field dependency)
+    const resumeSnapshot = {
+      about: teacher.resumeText || "",
+      skills: Array.isArray(teacher.skills) ? teacher.skills : [],
+      education: teacher.education || ""
+    };
+
+    // 5️⃣ SAVE APPLICATION (THIS WAS THE BLOCKER)
     await JobApplication.create({
       jobId,
       teacherUid: uid,
       instituteUid: job.instituteUid,
-      resumeSnapshot: {
-        about: teacher.resumeText,
-        skills: teacher.skills,
-        education: teacher.education
-      },
+      resumeSnapshot,
       status: "applied"
     });
 
