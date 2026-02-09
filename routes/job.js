@@ -115,10 +115,8 @@ router.get("/browse", async (req, res) => {
   }
 });
 
-
-================================================= */
 /* =================================================
-   APPLY JOB (FINAL – GUARANTEED SAVE)
+   APPLY JOB
    POST /api/job/apply
 ================================================= */
 router.post("/apply", async (req, res) => {
@@ -132,7 +130,6 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    // 1️⃣ Teacher fetch
     const teacher = await Teacher.findOne({ uid });
     if (!teacher) {
       return res.status(404).json({
@@ -141,7 +138,6 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    // 2️⃣ Job fetch
     const job = await Job.findById(jobId);
     if (!job || job.status !== "open") {
       return res.status(404).json({
@@ -150,7 +146,6 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    // 3️⃣ Duplicate apply block
     const alreadyApplied = await JobApplication.findOne({
       jobId,
       teacherUid: uid
@@ -163,19 +158,15 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    // 4️⃣ Resume snapshot (SAFE – no field dependency)
-    const resumeSnapshot = {
-      about: teacher.resumeText || "",
-      skills: Array.isArray(teacher.skills) ? teacher.skills : [],
-      education: teacher.education || ""
-    };
-
-    // 5️⃣ SAVE APPLICATION (THIS WAS THE BLOCKER)
     await JobApplication.create({
       jobId,
       teacherUid: uid,
       instituteUid: job.instituteUid,
-      resumeSnapshot,
+      resumeSnapshot: {
+        about: teacher.resumeText || "",
+        skills: Array.isArray(teacher.skills) ? teacher.skills : [],
+        education: teacher.education || ""
+      },
       status: "applied"
     });
 
