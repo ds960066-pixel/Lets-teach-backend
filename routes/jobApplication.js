@@ -4,27 +4,27 @@ const router = express.Router();
 const Job = require("../models/job");
 const Teacher = require("../models/Teacher");
 const JobApplication = require("../models/JobApplication");
+const { requireRole } = require("../middleware/auth");
 
 /*
 =================================================
-APPLY JOB
+APPLY JOB (Teacher Only)
 POST /api/job-application/apply
 =================================================
 */
-router.post("/apply", async (req, res) => {
+router.post("/apply", requireRole("teacher"), async (req, res) => {
   try {
-    const { jobId, uid } = req.body;
+    const { jobId } = req.body;
+    const teacherUid = req.user.uid;   // 🔥 from middleware
 
-    if (!jobId || !uid) {
+    if (!jobId) {
       return res.status(400).json({
         success: false,
-        message: "Missing jobId or uid"
+        message: "Missing jobId"
       });
     }
 
-    const cleanUid = String(uid).trim();
-
-    const teacher = await Teacher.findOne({ uid: cleanUid });
+    const teacher = await Teacher.findOne({ uid: String(teacherUid).trim() });
     if (!teacher) {
       return res.status(404).json({
         success: false,
@@ -42,7 +42,7 @@ router.post("/apply", async (req, res) => {
 
     const alreadyApplied = await JobApplication.findOne({
       jobId,
-      teacherUid: cleanUid
+      teacherUid
     });
 
     if (alreadyApplied) {
@@ -54,7 +54,7 @@ router.post("/apply", async (req, res) => {
 
     await JobApplication.create({
       jobId,
-      teacherUid: cleanUid,
+      teacherUid,
       instituteUid: job.instituteUid,
       resumeSnapshot: {
         about: teacher.resumeText || "",
@@ -81,13 +81,21 @@ router.post("/apply", async (req, res) => {
 
 /*
 =================================================
-INSTITUTE RECEIVED APPLICATIONS
+INSTITUTE RECEIVED APPLICATIONS (Institute Only)
 GET /api/job-application/institute/:uid
 =================================================
 */
-router.get("/institute/:uid", async (req, res) => {
+router.get("/institute/:uid", requireRole("institute"), async (req, res) => {
   try {
     const instituteUid = String(req.params.uid).trim();
+
+    // 🔥 Extra safety: UID match with header
+    if (req.user.uid !== instituteUid) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access"
+      });
+    }
 
     const applications = await JobApplication.find({ instituteUid })
       .populate("jobId", "title subject city role")
@@ -118,11 +126,11 @@ router.get("/institute/:uid", async (req, res) => {
 
 /*
 =================================================
-UPDATE APPLICATION STATUS
+UPDATE APPLICATION STATUS (Institute Only)
 POST /api/job-application/update-status
 =================================================
 */
-router.post("/update-status", async (req, res) => {
+router.post("/update-status", requireRole("institute"), async (req, res) => {
   try {
     const { applicationId, status } = req.body;
 
@@ -142,6 +150,14 @@ router.post("/update-status", async (req, res) => {
       });
     }
 
+    // 🔥 Security check: Only same institute can update
+    if (application.instituteUid !== req.user.uid) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+
     application.status = status;
     await application.save();
 
@@ -158,5 +174,42 @@ router.post("/update-status", async (req, res) => {
     });
   }
 });
+
+
+/*
+=================================================
+TEACHER APPLIED JOBS (Teacher Only)
+GET /api/job-application/teacher/:uid
+=================================================
+*/
+router.get("/teacher/:uid", requireRole("teacher"), async (req, res) => {
+  try {
+    const teacherUid = String(req.params.uid).trim();
+
+    if (req.user.uid !== teacherUid) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access"
+      });
+    }
+
+    const applications = await JobApplication.find({ teacherUid })
+      .populate("jobId", "title subject city role")
+      .lean();
+
+    return res.json({
+      success: true,
+      applications
+    });
+
+  } catch (err) {
+    console.error("Teacher applications error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
 
 module.exports = router;
