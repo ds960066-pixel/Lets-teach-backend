@@ -22,7 +22,9 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    const teacher = await Teacher.findOne({ uid: String(uid).trim() });
+    const cleanUid = String(uid).trim();
+
+    const teacher = await Teacher.findOne({ uid: cleanUid });
     if (!teacher) {
       return res.status(404).json({
         success: false,
@@ -40,7 +42,7 @@ router.post("/apply", async (req, res) => {
 
     const alreadyApplied = await JobApplication.findOne({
       jobId,
-      teacherUid: uid
+      teacherUid: cleanUid
     });
 
     if (alreadyApplied) {
@@ -52,7 +54,7 @@ router.post("/apply", async (req, res) => {
 
     await JobApplication.create({
       jobId,
-      teacherUid: uid,
+      teacherUid: cleanUid,
       instituteUid: job.instituteUid,
       resumeSnapshot: {
         about: teacher.resumeText || "",
@@ -85,13 +87,12 @@ GET /api/job-application/institute/:uid
 */
 router.get("/institute/:uid", async (req, res) => {
   try {
-    const instituteUid = req.params.uid;
+    const instituteUid = String(req.params.uid).trim();
 
     const applications = await JobApplication.find({ instituteUid })
       .populate("jobId", "title subject city role")
       .lean();
 
-    // Attach teacher info manually
     for (let app of applications) {
       const teacher = await Teacher.findOne({ uid: app.teacherUid })
         .select("name city subject resumeUrl")
@@ -114,5 +115,48 @@ router.get("/institute/:uid", async (req, res) => {
   }
 });
 
+
+/*
+=================================================
+UPDATE APPLICATION STATUS
+POST /api/job-application/update-status
+=================================================
+*/
+router.post("/update-status", async (req, res) => {
+  try {
+    const { applicationId, status } = req.body;
+
+    if (!applicationId || !["shortlisted", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request"
+      });
+    }
+
+    const application = await JobApplication.findById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found"
+      });
+    }
+
+    application.status = status;
+    await application.save();
+
+    return res.json({
+      success: true,
+      message: "Status updated successfully"
+    });
+
+  } catch (err) {
+    console.error("Update status error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
 
 module.exports = router;
