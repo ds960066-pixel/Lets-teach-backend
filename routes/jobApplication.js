@@ -22,7 +22,7 @@ router.post("/apply", async (req, res) => {
       });
     }
 
-    const teacher = await Teacher.findOne({ uid });
+    const teacher = await Teacher.findOne({ uid: String(uid).trim() });
     if (!teacher) {
       return res.status(404).json({
         success: false,
@@ -75,5 +75,44 @@ router.post("/apply", async (req, res) => {
     });
   }
 });
+
+
+/*
+=================================================
+INSTITUTE RECEIVED APPLICATIONS
+GET /api/job-application/institute/:uid
+=================================================
+*/
+router.get("/institute/:uid", async (req, res) => {
+  try {
+    const instituteUid = req.params.uid;
+
+    const applications = await JobApplication.find({ instituteUid })
+      .populate("jobId", "title subject city role")
+      .lean();
+
+    // Attach teacher info manually
+    for (let app of applications) {
+      const teacher = await Teacher.findOne({ uid: app.teacherUid })
+        .select("name city subject resumeUrl")
+        .lean();
+
+      app.teacher = teacher || null;
+    }
+
+    return res.json({
+      success: true,
+      applications
+    });
+
+  } catch (err) {
+    console.error("Institute applications error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
 
 module.exports = router;

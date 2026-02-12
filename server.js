@@ -170,9 +170,15 @@ io.on("connection", (socket) => {
 
 /* ---------- MongoDB ---------- */
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
+  .connect(process.env.MONGO_URI, {
+    dbName: "lets-teach"   // 🔥 FORCE correct DB
+  })
+  .then(() => {
+    console.log("MongoDB connected");
+    console.log("Connected DB:", mongoose.connection.name);
+  })
   .catch((err) => console.log("Mongo error:", err.message));
+
 
 /* ---------- Start Server ---------- */
 const PORT = process.env.PORT || 5000;
