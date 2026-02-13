@@ -2,22 +2,40 @@ const express = require("express");
 const router = express.Router();
 const Message = require("../models/Message");
 const Invite = require("../models/Invite");
+const JobApplication = require("../models/JobApplication");
 
 /* =====================================================
    INTERNAL FUNCTION — CHECK CHAT PERMISSION
+   (Invite Accepted OR Job Shortlisted)
 ===================================================== */
 async function canChat(uid1, uid2) {
-  return await Invite.findOne({
+  // 1️⃣ Check accepted invite
+  const invite = await Invite.findOne({
     status: "accepted",
     $or: [
       { fromUid: uid1, toUid: uid2 },
       { fromUid: uid2, toUid: uid1 }
     ]
   }).lean();
+
+  if (invite) return true;
+
+  // 2️⃣ Check shortlisted job application
+  const application = await JobApplication.findOne({
+    status: "shortlisted",
+    $or: [
+      { teacherUid: uid1, instituteUid: uid2 },
+      { teacherUid: uid2, instituteUid: uid1 }
+    ]
+  }).lean();
+
+  if (application) return true;
+
+  return false;
 }
 
 /* =====================================================
-   SEND MESSAGE (Only if invite ACCEPTED)
+   SEND MESSAGE (PROTECTED)
    POST /api/chat/send
 ===================================================== */
 router.post("/send", async (req, res) => {
@@ -35,7 +53,7 @@ router.post("/send", async (req, res) => {
     if (!allowed) {
       return res.status(403).json({
         success: false,
-        message: "Chat allowed only after invite acceptance"
+        message: "Chat allowed only after invite acceptance or shortlist"
       });
     }
 
@@ -49,6 +67,7 @@ router.post("/send", async (req, res) => {
       success: true,
       data: message
     });
+
   } catch (err) {
     console.error("SEND MESSAGE ERROR:", err);
     res.status(500).json({
@@ -70,7 +89,7 @@ router.get("/:uid1/:uid2", async (req, res) => {
     if (!allowed) {
       return res.status(403).json({
         success: false,
-        message: "Chat history not allowed"
+        message: "Chat not allowed"
       });
     }
 
@@ -85,6 +104,7 @@ router.get("/:uid1/:uid2", async (req, res) => {
       success: true,
       messages
     });
+
   } catch (err) {
     console.error("GET CHAT ERROR:", err);
     res.status(500).json({
@@ -95,7 +115,7 @@ router.get("/:uid1/:uid2", async (req, res) => {
 });
 
 /* =====================================================
-   CHAT LIST (DASHBOARD)
+   CHAT LIST (Dashboard)
    GET /api/chat/list/:uid
 ===================================================== */
 router.get("/list/:uid", async (req, res) => {
@@ -124,6 +144,7 @@ router.get("/list/:uid", async (req, res) => {
       success: true,
       chats: Object.values(chatMap)
     });
+
   } catch (err) {
     console.error("CHAT LIST ERROR:", err);
     res.status(500).json({

@@ -1,4 +1,4 @@
-console.log("🔥 SERVER FILE LOADED FROM DESKTOP");
+console.log("🔥 SERVER FILE LOADED");
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -12,6 +12,7 @@ const Message = require("./models/Message");
 const Invite = require("./models/Invite");
 const Teacher = require("./models/Teacher");
 const Institute = require("./models/Institute");
+const JobApplication = require("./models/JobApplication"); // 🔥 IMPORTANT
 
 /* ---------- Routes ---------- */
 const teacherRoutes = require("./routes/teacher");
@@ -41,75 +42,18 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-/* =================================================
-   ROUTE MOUNTING (FINAL & CLEAN)
-================================================= */
-
-/* Core */
+/* ---------- Routes ---------- */
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes);
-
-/* Jobs (NO OTP, SINGLE SOURCE) */
 app.use("/api/job", jobRoutes);
-
-/* Job Applications (SEPARATE PATH) */
 app.use("/api/job-application", jobApplicationRoutes);
-
-/* Others */
 app.use("/api/notification", notificationRoutes);
 app.use("/api/manual-institute", manualInstituteRoutes);
 
-/* =================================================
-   PUBLIC HOMEPAGE APIs
-================================================= */
-
-/* ---------- PUBLIC TEACHERS ---------- */
-app.get("/api/teachers", async (req, res) => {
-  try {
-    const filter = { isBlocked: false };
-
-    if (req.query.city) filter.city = req.query.city;
-    if (req.query.subject) filter.subject = req.query.subject;
-
-    const teachers = await Teacher.find(filter).select(
-      "uid name subject city experience role verificationStatus"
-    );
-
-    return res.json({ success: true, teachers });
-  } catch (err) {
-    console.error("Error /api/teachers:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-/* ---------- PUBLIC INSTITUTES ---------- */
-app.get("/api/institutes", async (req, res) => {
-  try {
-    const filter = { isBlocked: false };
-
-    if (req.query.city) filter.city = req.query.city;
-
-    const institutes = await Institute.find(filter).select(
-      "uid name city verificationStatus"
-    );
-
-    return res.json({ success: true, institutes });
-  } catch (err) {
-    console.error("Error /api/institutes:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-/* ---------- BASIC ROUTES ---------- */
+/* ---------- Health ---------- */
 app.get("/", (req, res) => {
   res.send("Lets Teach Backend is Live 🚀");
 });
@@ -119,7 +63,7 @@ app.get("/health", (req, res) => {
 });
 
 /* =================================================
-   SOCKET.IO – REALTIME CHAT
+   SOCKET.IO – REALTIME CHAT (FINAL VERSION)
 ================================================= */
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
@@ -127,7 +71,6 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", (roomId) => {
     if (!roomId) return;
     socket.join(roomId);
-    console.log("Joined room:", roomId);
   });
 
   socket.on("sendMessage", async (data) => {
@@ -135,22 +78,34 @@ io.on("connection", (socket) => {
       const { senderUid, receiverUid, text, roomId } = data;
       if (!senderUid || !receiverUid || !text || !roomId) return;
 
-      const invite = await Invite.findOne({
+      /* 1️⃣ Check accepted invite */
+      const inviteAccepted = await Invite.findOne({
+        status: "accepted",
         $or: [
-          { fromUid: senderUid, toUid: receiverUid, status: "accepted" },
-          { fromUid: receiverUid, toUid: senderUid, status: "accepted" }
+          { fromUid: senderUid, toUid: receiverUid },
+          { fromUid: receiverUid, toUid: senderUid }
         ]
       });
 
-      if (!invite) return;
+      /* 2️⃣ Check shortlisted job */
+      const shortlisted = await JobApplication.findOne({
+        status: "shortlisted",
+        $or: [
+          { teacherUid: senderUid, instituteUid: receiverUid },
+          { teacherUid: receiverUid, instituteUid: senderUid }
+        ]
+      });
 
-      const message = new Message({
+      if (!inviteAccepted && !shortlisted) {
+        console.log("❌ Chat blocked (no permission)");
+        return;
+      }
+
+      const message = await Message.create({
         senderUid,
         receiverUid,
         text
       });
-
-      await message.save();
 
       io.to(roomId).emit("receiveMessage", {
         senderUid,
@@ -158,8 +113,9 @@ io.on("connection", (socket) => {
         text,
         createdAt: message.createdAt
       });
+
     } catch (err) {
-      console.error("sendMessage error:", err);
+      console.error("Socket sendMessage error:", err);
     }
   });
 
@@ -171,14 +127,13 @@ io.on("connection", (socket) => {
 /* ---------- MongoDB ---------- */
 mongoose
   .connect(process.env.MONGO_URI, {
-    dbName: "lets-teach"   // 🔥 FORCE correct DB
+    dbName: "lets-teach" // 🔥 Force correct DB
   })
   .then(() => {
     console.log("MongoDB connected");
     console.log("Connected DB:", mongoose.connection.name);
   })
   .catch((err) => console.log("Mongo error:", err.message));
-
 
 /* ---------- Start Server ---------- */
 const PORT = process.env.PORT || 5000;
