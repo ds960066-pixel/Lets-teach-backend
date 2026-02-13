@@ -5,50 +5,95 @@ const Invite = require("../models/Invite");
 const Teacher = require("../models/Teacher");
 const Institute = require("../models/Institute");
 
-/* CREATE INVITE */
+/* =================================================
+   CREATE INVITE (Teacher OR Institute)
+   POST /api/invite/create
+================================================= */
 router.post("/create", async (req, res) => {
   try {
     const { fromType, fromUid, toType, toUid } = req.body;
 
     if (!fromType || !fromUid || !toType || !toUid) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
     }
 
-    if (fromType !== "institute" || toType !== "teacher") {
-      return res.status(403).json({ success: false });
+    // ❌ Same role invite not allowed
+    if (fromType === toType) {
+      return res.status(403).json({
+        success: false,
+        message: "Invalid invite type"
+      });
     }
 
-    const institute = await Institute.findOne({
-      uid: fromUid,
-      registered: true,
-      verificationStatus: "verified",
-      isBlocked: false
-    });
-
-    if (!institute) {
-      return res.status(403).json({ success: false });
+    // ✅ Validate sender
+    if (fromType === "teacher") {
+      const teacher = await Teacher.findOne({
+        uid: fromUid,
+        isBlocked: false
+      });
+      if (!teacher) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid teacher"
+        });
+      }
     }
 
-    const teacher = await Teacher.findOne({
-      uid: toUid,
-      verificationStatus: "verified",
-      isBlocked: false
-    });
-
-    if (!teacher) {
-      return res.status(404).json({ success: false });
+    if (fromType === "institute") {
+      const institute = await Institute.findOne({
+        uid: fromUid,
+        isBlocked: false
+      });
+      if (!institute) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid institute"
+        });
+      }
     }
 
+    // ✅ Validate receiver
+    if (toType === "teacher") {
+      const teacher = await Teacher.findOne({
+        uid: toUid,
+        isBlocked: false
+      });
+      if (!teacher) {
+        return res.status(404).json({
+          success: false,
+          message: "Teacher not found"
+        });
+      }
+    }
+
+    if (toType === "institute") {
+      const institute = await Institute.findOne({
+        uid: toUid,
+        isBlocked: false
+      });
+      if (!institute) {
+        return res.status(404).json({
+          success: false,
+          message: "Institute not found"
+        });
+      }
+    }
+
+    // ❌ Prevent duplicate pending invites
     const existing = await Invite.findOne({
-      fromType,
       fromUid,
-      toType,
       toUid,
       status: "pending"
     });
 
     if (existing) {
-      return res.json({ success: false, message: "Invite already sent" });
+      return res.json({
+        success: false,
+        message: "Invite already sent"
+      });
     }
 
     const invite = await Invite.create({
@@ -59,48 +104,109 @@ router.post("/create", async (req, res) => {
       status: "pending"
     });
 
-    res.json({ success: true, invite });
+    return res.json({
+      success: true,
+      message: "Invite sent successfully",
+      invite
+    });
+
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("Create invite error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
-/* TEACHER INVITES */
-router.get("/teacher/:uid", async (req, res) => {
+
+/* =================================================
+   GET ALL INVITES FOR USER
+   GET /api/invite/user/:uid
+================================================= */
+router.get("/user/:uid", async (req, res) => {
   try {
-    const invites = await Invite.find({ toUid: req.params.uid });
-    res.json({ success: true, invites });
+    const uid = req.params.uid;
+
+    const invites = await Invite.find({
+      $or: [{ fromUid: uid }, { toUid: uid }]
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      invites
+    });
+
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("Get invites error:", err);
+    return res.status(500).json({
+      success: false
+    });
   }
 });
 
-/* INSTITUTE INVITES */
-router.get("/institute/:uid", async (req, res) => {
-  try {
-    const invites = await Invite.find({ fromUid: req.params.uid });
-    res.json({ success: true, invites });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
-});
 
-/* ACCEPT */
+/* =================================================
+   ACCEPT INVITE
+   POST /api/invite/accept/:id
+================================================= */
 router.post("/accept/:id", async (req, res) => {
-  await Invite.findByIdAndUpdate(req.params.id, {
-    status: "accepted",
-    acceptedAt: new Date()
-  });
-  res.json({ success: true });
+  try {
+    const invite = await Invite.findById(req.params.id);
+    if (!invite) {
+      return res.status(404).json({
+        success: false,
+        message: "Invite not found"
+      });
+    }
+
+    invite.status = "accepted";
+    invite.acceptedAt = new Date();
+    await invite.save();
+
+    return res.json({
+      success: true,
+      message: "Invite accepted"
+    });
+
+  } catch (err) {
+    console.error("Accept invite error:", err);
+    return res.status(500).json({
+      success: false
+    });
+  }
 });
 
-/* REJECT */
+
+/* =================================================
+   REJECT INVITE
+   POST /api/invite/reject/:id
+================================================= */
 router.post("/reject/:id", async (req, res) => {
-  await Invite.findByIdAndUpdate(req.params.id, {
-    status: "rejected",
-    rejectedAt: new Date()
-  });
-  res.json({ success: true });
+  try {
+    const invite = await Invite.findById(req.params.id);
+    if (!invite) {
+      return res.status(404).json({
+        success: false,
+        message: "Invite not found"
+      });
+    }
+
+    invite.status = "rejected";
+    invite.rejectedAt = new Date();
+    await invite.save();
+
+    return res.json({
+      success: true,
+      message: "Invite rejected"
+    });
+
+  } catch (err) {
+    console.error("Reject invite error:", err);
+    return res.status(500).json({
+      success: false
+    });
+  }
 });
 
 module.exports = router;
