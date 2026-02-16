@@ -4,7 +4,6 @@ const router = express.Router();
 const Invite = require("../models/Invite");
 const Teacher = require("../models/Teacher");
 const Institute = require("../models/Institute");
-const { requireRole } = require("../middleware/auth");
 
 /*
 =================================================
@@ -26,11 +25,11 @@ router.post("/create", async (req, res) => {
     if (fromUid === toUid) {
       return res.status(400).json({
         success: false,
-        message: "Invalid invite"
+        message: "Cannot invite yourself"
       });
     }
 
-    // 🔒 Only teacher ↔ institute allowed
+    // Only teacher ↔ institute allowed
     const validCombo =
       (fromType === "teacher" && toType === "institute") ||
       (fromType === "institute" && toType === "teacher");
@@ -42,7 +41,7 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    // 🔍 Verify sender exists
+    // Verify sender exists
     if (fromType === "teacher") {
       const teacher = await Teacher.findOne({
         uid: fromUid,
@@ -69,7 +68,7 @@ router.post("/create", async (req, res) => {
       }
     }
 
-    // 🔍 Verify receiver exists
+    // Verify receiver exists
     if (toType === "teacher") {
       const teacher = await Teacher.findOne({
         uid: toUid,
@@ -96,7 +95,7 @@ router.post("/create", async (req, res) => {
       }
     }
 
-    // 🔁 Prevent duplicate pending invite (both directions)
+    // Prevent duplicate pending (both directions)
     const existing = await Invite.findOne({
       $or: [
         { fromUid, toUid, status: "pending" },
@@ -138,7 +137,7 @@ router.post("/create", async (req, res) => {
 
 /*
 =================================================
-GET INVITES FOR USER
+GET ALL INVITES FOR USER
 GET /api/invite/user/:uid
 =================================================
 */
@@ -156,6 +155,67 @@ router.get("/user/:uid", async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Invite user fetch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+
+/*
+=================================================
+GET INVITES RECEIVED BY TEACHER
+GET /api/invite/teacher/:uid
+=================================================
+*/
+router.get("/teacher/:uid", async (req, res) => {
+  try {
+    const uid = req.params.uid;
+
+    const invites = await Invite.find({
+      toUid: uid,
+      toType: "teacher"
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      invites
+    });
+
+  } catch (err) {
+    console.error("Teacher invite fetch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+
+/*
+=================================================
+GET INVITES SENT BY INSTITUTE
+GET /api/invite/institute/:uid
+=================================================
+*/
+router.get("/institute/:uid", async (req, res) => {
+  try {
+    const uid = req.params.uid;
+
+    const invites = await Invite.find({
+      fromUid: uid,
+      fromType: "institute"
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      invites
+    });
+
+  } catch (err) {
+    console.error("Institute invite fetch error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error"
@@ -191,6 +251,7 @@ router.post("/accept/:id", async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Invite accept error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error"
@@ -226,11 +287,13 @@ router.post("/reject/:id", async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Invite reject error:", err);
     return res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
+
 
 module.exports = router;
