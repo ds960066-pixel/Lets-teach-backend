@@ -8,7 +8,6 @@ const { requireRole } = require("../middleware/auth");
 
 /* =================================================
    CREATE JOB (Institute Only)
-   POST /api/job/create
 ================================================= */
 router.post("/create", requireRole("institute"), async (req, res) => {
   try {
@@ -24,6 +23,7 @@ router.post("/create", requireRole("institute"), async (req, res) => {
     const cleanUid = String(instituteUid).trim();
 
     const institute = await Institute.findOne({ uid: cleanUid });
+
     if (!institute) {
       return res.status(404).json({
         success: false,
@@ -52,9 +52,9 @@ router.post("/create", requireRole("institute"), async (req, res) => {
 
     const job = await Job.create({
       instituteUid: cleanUid,
-      title: String(title).trim(),
-      subject: String(subject).trim(),
-      city: String(city).trim(),
+      title: title.trim(),
+      subject: subject.trim(),
+      city: city.trim(),
       role: role || "both",
       salary: salary || "Negotiable",
       description: description || "",
@@ -79,19 +79,18 @@ router.post("/create", requireRole("institute"), async (req, res) => {
 
 
 /* =================================================
-   BROWSE JOBS (Public)
-   GET /api/job/browse
+   PUBLIC JOB BROWSING
 ================================================= */
 router.get("/browse", async (req, res) => {
   try {
     const filter = { status: "open" };
 
     if (req.query.city) {
-      filter.city = new RegExp(`^${String(req.query.city).trim()}$`, "i");
+      filter.city = new RegExp(`^${req.query.city.trim()}$`, "i");
     }
 
     if (req.query.subject) {
-      filter.subject = new RegExp(`^${String(req.query.subject).trim()}$`, "i");
+      filter.subject = new RegExp(`^${req.query.subject.trim()}$`, "i");
     }
 
     if (req.query.role === "part-time") {
@@ -122,14 +121,22 @@ router.get("/browse", async (req, res) => {
 
 
 /* =================================================
-   INSTITUTE JOBS (Institute Only)
-   GET /api/job/institute/:uid
+   INSTITUTE JOBS (SECURE)
 ================================================= */
 router.get("/institute/:uid", requireRole("institute"), async (req, res) => {
   try {
-    const cleanUid = String(req.params.uid).trim();
+    const paramUid = String(req.params.uid).trim();
+    const headerUid = String(req.headers["x-uid"] || "").trim();
 
-    const jobs = await Job.find({ instituteUid: cleanUid })
+    // 🔐 Security: UID mismatch block
+    if (paramUid !== headerUid) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access"
+      });
+    }
+
+    const jobs = await Job.find({ instituteUid: paramUid })
       .sort({ postedAt: -1 });
 
     return res.json({
@@ -148,53 +155,7 @@ router.get("/institute/:uid", requireRole("institute"), async (req, res) => {
 
 
 /* =================================================
-   INSTITUTE JOBS WITH APPLICATION COUNT (Institute Only)
-   GET /api/job/institute-with-count/:uid
-================================================= */
-router.get("/institute-with-count/:uid", requireRole("institute"), async (req, res) => {
-  try {
-    const instituteUid = String(req.params.uid).trim();
-
-    const jobs = await Job.aggregate([
-      { $match: { instituteUid } },
-      {
-        $lookup: {
-          from: "jobapplications",
-          localField: "_id",
-          foreignField: "jobId",
-          as: "applications"
-        }
-      },
-      {
-        $addFields: {
-          applicationCount: { $size: "$applications" }
-        }
-      },
-      {
-        $project: {
-          applications: 0
-        }
-      }
-    ]);
-
-    return res.json({
-      success: true,
-      jobs
-    });
-
-  } catch (err) {
-    console.error("Job count error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-
-/* =================================================
-   CLOSE JOB (Institute Only)
-   POST /api/job/close/:jobId
+   CLOSE JOB
 ================================================= */
 router.post("/close/:jobId", requireRole("institute"), async (req, res) => {
   try {
