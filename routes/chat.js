@@ -9,7 +9,7 @@ const JobApplication = require("../models/JobApplication");
    (Invite Accepted OR Job Shortlisted)
 ===================================================== */
 async function canChat(uid1, uid2) {
-  // 1️⃣ Check accepted invite
+  // 1️⃣ Accepted Invite
   const invite = await Invite.findOne({
     status: "accepted",
     $or: [
@@ -20,7 +20,7 @@ async function canChat(uid1, uid2) {
 
   if (invite) return true;
 
-  // 2️⃣ Check shortlisted job application
+  // 2️⃣ Shortlisted Job Application
   const application = await JobApplication.findOne({
     status: "shortlisted",
     $or: [
@@ -33,6 +33,47 @@ async function canChat(uid1, uid2) {
 
   return false;
 }
+
+/* =====================================================
+   CHAT LIST (Dashboard)
+   GET /api/chat/list/:uid
+   ⚠️ IMPORTANT: Place BEFORE /:uid1/:uid2
+===================================================== */
+router.get("/list/:uid", async (req, res) => {
+  try {
+    const uid = req.params.uid;
+
+    const messages = await Message.find({
+      $or: [{ senderUid: uid }, { receiverUid: uid }]
+    }).sort({ createdAt: -1 });
+
+    const chatMap = {};
+
+    messages.forEach((m) => {
+      const other = m.senderUid === uid ? m.receiverUid : m.senderUid;
+
+      if (!chatMap[other]) {
+        chatMap[other] = {
+          with: other,
+          lastText: m.text,
+          time: m.createdAt
+        };
+      }
+    });
+
+    res.json({
+      success: true,
+      chats: Object.values(chatMap)
+    });
+
+  } catch (err) {
+    console.error("CHAT LIST ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
 
 /* =====================================================
    SEND MESSAGE (PROTECTED)
@@ -107,46 +148,6 @@ router.get("/:uid1/:uid2", async (req, res) => {
 
   } catch (err) {
     console.error("GET CHAT ERROR:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
-
-/* =====================================================
-   CHAT LIST (Dashboard)
-   GET /api/chat/list/:uid
-===================================================== */
-router.get("/list/:uid", async (req, res) => {
-  try {
-    const uid = req.params.uid;
-
-    const messages = await Message.find({
-      $or: [{ senderUid: uid }, { receiverUid: uid }]
-    }).sort({ createdAt: -1 });
-
-    const chatMap = {};
-
-    messages.forEach((m) => {
-      const other = m.senderUid === uid ? m.receiverUid : m.senderUid;
-
-      if (!chatMap[other]) {
-        chatMap[other] = {
-          with: other,
-          lastText: m.text,
-          time: m.createdAt
-        };
-      }
-    });
-
-    res.json({
-      success: true,
-      chats: Object.values(chatMap)
-    });
-
-  } catch (err) {
-    console.error("CHAT LIST ERROR:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
