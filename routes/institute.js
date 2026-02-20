@@ -1,33 +1,77 @@
 const express = require("express");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
 const Institute = require("../models/Institute");
 
+const verifyToken = require("../middleware/verifyToken");
+const requireRole = require("../middleware/requireRole");
+
 /* ======================================
-   LOGIN CHECK (INSTITUTE) ✅ FIRST
-   GET /api/institute/login-check/:uid
+   GENERATE JWT TOKEN
 ====================================== */
-router.get("/login-check/:uid", async (req, res) => {
+function generateToken(institute) {
+  return jwt.sign(
+    {
+      uid: institute.uid,
+      role: "institute"
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES || "7d"
+    }
+  );
+}
+
+/* ======================================
+   LOGIN (INSTITUTE) ✅ JWT
+   POST /api/institute/login
+====================================== */
+router.post("/login", async (req, res) => {
   try {
-    const institute = await Institute.findOne({ uid: req.params.uid });
+    const { uid } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        message: "UID required"
+      });
+    }
+
+    const institute = await Institute.findOne({ uid });
 
     if (!institute) {
-      return res.json({ status: "REGISTER_REQUIRED" });
+      return res.status(404).json({
+        success: false,
+        message: "Institute not found"
+      });
     }
 
     if (institute.isBlocked) {
-      return res.json({ status: "BLOCKED" });
+      return res.status(403).json({
+        success: false,
+        message: "Account blocked"
+      });
     }
 
-    return res.json({ status: "OK" });
+    const token = generateToken(institute);
+
+    return res.json({
+      success: true,
+      token
+    });
+
   } catch (err) {
-    console.error("Institute login-check error:", err);
-    return res.status(500).json({ status: "ERROR" });
+    console.error("Institute login error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 });
 
+
 /* ======================================
-   CREATE INSTITUTE
-   POST /api/institute/create
+   CREATE INSTITUTE (REGISTER)
 ====================================== */
 router.post("/create", async (req, res) => {
   try {
@@ -59,29 +103,27 @@ router.post("/create", async (req, res) => {
 
     await institute.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Institute registered successfully",
-      institute
+      message: "Institute registered successfully"
     });
+
   } catch (err) {
     console.error("Institute create error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
 
+
 /* ======================================
    PUBLIC – VERIFIED INSTITUTES ONLY
-   GET /api/institute/public
 ====================================== */
 router.get("/public", async (req, res) => {
   try {
-    const filter = {
-      isBlocked: false
-    };
+    const filter = { isBlocked: false };
 
     if (req.query.city) filter.city = req.query.city;
 
@@ -89,74 +131,93 @@ router.get("/public", async (req, res) => {
       "uid name city subjectsNeeded"
     );
 
-    res.json({
+    return res.json({
       success: true,
       institutes
     });
+
   } catch (err) {
     console.error("Institute public error:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       institutes: []
     });
   }
 });
 
-/* ======================================
-   BROWSE AFTER LOGIN (MIXED VIEW)
-   GET /api/institute/browse
-====================================== */
-router.get("/browse", async (req, res) => {
-  try {
-    const filter = {
-      isBlocked: false
-    };
-
-    if (req.query.city) filter.city = req.query.city;
-
-    const institutes = await Institute.find(filter).select(
-      "uid name city subjectsNeeded verificationStatus"
-    );
-
-    res.json({
-      success: true,
-      institutes
-    });
-  } catch (err) {
-    console.error("Institute browse error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-});
 
 /* ======================================
-   GET INSTITUTE BY UID (PROFILE)
-   ❗ MUST BE LAST
-   GET /api/institute/:uid
+   BROWSE AFTER LOGIN (Protected)
 ====================================== */
-router.get("/:uid", async (req, res) => {
-  try {
-    const institute = await Institute.findOne({ uid: req.params.uid });
+router.get(
+  "/browse",
+  verifyToken,
+  requireRole("institute"),
+  async (req, res) => {
+    try {
 
-    if (!institute) {
-      return res.status(404).json({
+      const filter = { isBlocked: false };
+
+      if (req.query.city) filter.city = req.query.city;
+
+      const institutes = await Institute.find(filter).select(
+        "uid name city subjectsNeeded verificationStatus"
+      );
+
+      return res.json({
+        success: true,
+        institutes
+      });
+
+    } catch (err) {
+      console.error("Institute browse error:", err);
+      return res.status(500).json({
         success: false,
-        message: "Institute not found"
+        message: "Server error"
       });
     }
-
-    res.json({
-      success: true,
-      institute
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
   }
-});
+);
+
+
+/* ======================================
+   GET OWN PROFILE (Protected)
+====================================== */
+router.get(
+  "/profile/:uid",
+  verifyToken,
+  requireRole("institute"),
+  async (req, res) => {
+    try {
+
+      if (req.user.uid !== req.params.uid) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized"
+        });
+      }
+
+      const institute = await Institute.findOne({ uid: req.params.uid });
+
+      if (!institute) {
+        return res.status(404).json({
+          success: false,
+          message: "Institute not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        institute
+      });
+
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Server error"
+      });
+    }
+  }
+);
 
 module.exports = router;
