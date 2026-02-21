@@ -9,6 +9,20 @@ const teacherSchema = new mongoose.Schema(
       index: true
     },
 
+    /* ===== NEW AUTH FIELDS (MIGRATION SAFE) ===== */
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,   // allows old docs without email
+      lowercase: true,
+      trim: true
+    },
+
+    password: {
+      type: String
+    },
+
+    /* ===== BASIC INFO ===== */
     name: {
       type: String,
       required: true,
@@ -88,15 +102,16 @@ const teacherSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
-/* ===== RESUME (MANDATORY FOR JOB APPLY) ===== */
-resume: {
-  summary: { type: String, trim: true },
-  experienceDetails: { type: String, trim: true },
-  education: { type: String, trim: true },
-  skills: [{ type: String, trim: true }],
-  pdfUrl: { type: String, default: null }, // future upload
-  isComplete: { type: Boolean, default: false }
-},
+
+    /* ===== RESUME (MANDATORY FOR JOB APPLY) ===== */
+    resume: {
+      summary: { type: String, trim: true },
+      experienceDetails: { type: String, trim: true },
+      education: { type: String, trim: true },
+      skills: [{ type: String, trim: true }],
+      pdfUrl: { type: String, default: null },
+      isComplete: { type: Boolean, default: false }
+    },
 
     /* ===== SAFETY ===== */
     isBlocked: {

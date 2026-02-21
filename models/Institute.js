@@ -12,6 +12,19 @@ const instituteSchema = new mongoose.Schema(
       index: true
     },
 
+    /* ===== NEW AUTH FIELDS (MIGRATION SAFE) ===== */
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,   // allows old docs without email
+      lowercase: true,
+      trim: true
+    },
+
+    password: {
+      type: String
+    },
+
     name: {
       type: String,
       required: true,

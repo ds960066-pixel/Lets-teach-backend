@@ -16,6 +16,7 @@ const Institute = require("./models/Institute");
 const JobApplication = require("./models/JobApplication");
 
 /* ================= ROUTES ================= */
+const authRoutes = require("./routes/auth");   // ✅ NEW
 const teacherRoutes = require("./routes/teacher");
 const instituteRoutes = require("./routes/institute");
 const inviteRoutes = require("./routes/invite");
@@ -44,6 +45,8 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 /* ================= ROUTE MOUNTING ================= */
+app.use("/api/auth", authRoutes);   // ✅ NEW AUTH ROUTE
+
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/institute", instituteRoutes);
 app.use("/api/invite", inviteRoutes);
@@ -128,7 +131,6 @@ io.on("connection", (socket) => {
 
       if (!senderUid || !receiverUid || !text || !roomId) return;
 
-      /* 1️⃣ Check accepted invite */
       const inviteAccepted = await Invite.findOne({
         status: "accepted",
         $or: [
@@ -137,7 +139,6 @@ io.on("connection", (socket) => {
         ]
       });
 
-      /* 2️⃣ Check shortlisted job */
       const shortlisted = await JobApplication.findOne({
         status: "shortlisted",
         $or: [
