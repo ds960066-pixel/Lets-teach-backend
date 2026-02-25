@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+
 const Teacher = require("../models/Teacher");
 const upload = require("../utils/uploadResume");
 
@@ -7,95 +10,168 @@ const verifyToken = require("../middleware/verifyToken");
 const requireRole = require("../middleware/requireRole");
 
 /* ======================================
-   GET LOGGED-IN TEACHER PROFILE
-   GET /api/teacher/me
+   GENERATE JWT TOKEN
 ====================================== */
-router.get(
-  "/me",
-  verifyToken,
-  requireRole("teacher"),
-  async (req, res) => {
-    try {
-      const teacher = await Teacher.findById(req.user.id);
-
-      if (!teacher) {
-        return res.status(404).json({
-          success: false,
-          message: "Teacher not found"
-        });
-      }
-
-      return res.json({
-        success: true,
-        teacher
-      });
-
-    } catch (err) {
-      console.error("Get profile error:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Server error"
-      });
+function generateToken(user) {
+  return jwt.sign(
+    {
+      uid: user.uid,
+      role: "teacher"
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES || "7d"
     }
-  }
-);
-
+  );
+}
 
 /* ======================================
-   UPDATE PROFILE
-   POST /api/teacher/update-profile
+   REGISTER (EMAIL + PASSWORD)
+   POST /api/teacher/create
 ====================================== */
-router.post(
-  "/update-profile",
-  verifyToken,
-  requireRole("teacher"),
-  async (req, res) => {
-    try {
+router.post("/create", async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      name,
+      phone,
+      subject,
+      city,
+      experience
+    } = req.body;
 
-      const { phone, subject, city, experience } = req.body;
-
-      const teacher = await Teacher.findById(req.user.id);
-
-      if (!teacher) {
-        return res.status(404).json({
-          success: false,
-          message: "Teacher not found"
-        });
-      }
-
-      if (phone) teacher.phone = phone;
-      if (subject) teacher.subject = subject;
-      if (city) teacher.city = city;
-      if (experience !== undefined) teacher.experience = experience;
-
-      await teacher.save();
-
-      return res.json({
-        success: true,
-        message: "Profile updated"
-      });
-
-    } catch (err) {
-      console.error("Update profile error:", err);
-      return res.status(500).json({
+    if (!email || !password || !name || !phone || !subject || !city) {
+      return res.status(400).json({
         success: false,
-        message: "Server error"
+        message: "All required fields must be filled"
       });
     }
-  }
-);
 
+    const existing = await Teacher.findOne({
+      email: email.toLowerCase()
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const teacher = new Teacher({
+      uid: "T" + Date.now(), // internal system UID
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      name,
+      phone,
+      subject,
+      city,
+      experience: experience || 0,
+      verificationStatus: "unverified"
+    });
+
+    await teacher.save();
+
+    return res.json({
+      success: true,
+      message: "Registered successfully"
+    });
+
+  } catch (err) {
+    console.error("Teacher create error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
 
 /* ======================================
-   SAVE RESUME DETAILS
-   POST /api/teacher/resume
+   LOGIN (EMAIL + PASSWORD)
+   POST /api/teacher/login
+====================================== */
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password required"
+      });
+    }
+
+    const teacher = await Teacher.findOne({
+      email: email.toLowerCase()
+    });
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid credentials"
+      });
+    }
+
+    if (!teacher.password) {
+      return res.status(401).json({
+        success: false,
+        message: "Password not set. Please register again."
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, teacher.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
+    }
+
+    if (teacher.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Account blocked"
+      });
+    }
+
+    const token = generateToken(teacher);
+
+    return res.json({
+      success: true,
+      token,
+      uid: teacher.uid,
+      role: "teacher"
+    });
+
+  } catch (err) {
+    console.error("Teacher login error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
+
+/* ======================================
+   SAVE / UPDATE RESUME (Protected)
 ====================================== */
 router.post(
-  "/resume",
+  "/resume/:uid",
   verifyToken,
   requireRole("teacher"),
   async (req, res) => {
     try {
+
+      if (req.user.uid !== req.params.uid) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized"
+        });
+      }
 
       const { about, education, skills } = req.body;
 
@@ -106,7 +182,7 @@ router.post(
         });
       }
 
-      const teacher = await Teacher.findById(req.user.id);
+      const teacher = await Teacher.findOne({ uid: req.params.uid });
 
       if (!teacher) {
         return res.status(404).json({
@@ -141,18 +217,23 @@ router.post(
   }
 );
 
-
 /* ======================================
-   UPLOAD RESUME PDF
-   POST /api/teacher/upload-resume
+   UPLOAD RESUME PDF (Protected)
 ====================================== */
 router.post(
-  "/upload-resume",
+  "/upload-resume/:uid",
   verifyToken,
   requireRole("teacher"),
   upload.single("resume"),
   async (req, res) => {
     try {
+
+      if (req.user.uid !== req.params.uid) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized"
+        });
+      }
 
       if (!req.file) {
         return res.status(400).json({
@@ -163,8 +244,8 @@ router.post(
 
       const resumeUrl = `/uploads/${req.file.filename}`;
 
-      await Teacher.findByIdAndUpdate(
-        req.user.id,
+      await Teacher.updateOne(
+        { uid: req.params.uid },
         { resumeUrl }
       );
 
@@ -179,6 +260,46 @@ router.post(
       return res.status(500).json({
         success: false,
         message: "Upload failed"
+      });
+    }
+  }
+);
+
+/* ======================================
+   GET TEACHER PROFILE (Protected)
+====================================== */
+router.get(
+  "/:uid",
+  verifyToken,
+  requireRole("teacher"),
+  async (req, res) => {
+    try {
+
+      if (req.user.uid !== req.params.uid) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized"
+        });
+      }
+
+      const teacher = await Teacher.findOne({ uid: req.params.uid });
+
+      if (!teacher) {
+        return res.status(404).json({
+          success: false,
+          message: "Teacher not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        teacher
+      });
+
+    } catch (err) {
+      console.error("Get teacher error:", err);
+      return res.status(500).json({
+        success: false
       });
     }
   }
