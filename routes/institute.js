@@ -9,12 +9,12 @@ const verifyToken = require("../middleware/verifyToken");
 const requireRole = require("../middleware/requireRole");
 
 /* ======================================
-   GENERATE JWT TOKEN
+   GENERATE JWT TOKEN (_id BASED)
 ====================================== */
 function generateToken(institute) {
   return jwt.sign(
     {
-      uid: institute.uid,
+      id: institute._id,
       role: "institute"
     },
     process.env.JWT_SECRET,
@@ -26,7 +26,6 @@ function generateToken(institute) {
 
 /* ======================================
    REGISTER (EMAIL + PASSWORD)
-   POST /api/institute/create
 ====================================== */
 router.post("/create", async (req, res) => {
   try {
@@ -61,7 +60,7 @@ router.post("/create", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const institute = new Institute({
-      uid: "I" + Date.now(), // internal UID
+      uid: "I" + Date.now(), // optional (ignore in system)
       email: email.toLowerCase(),
       password: hashedPassword,
       name,
@@ -89,8 +88,7 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   LOGIN (EMAIL + PASSWORD)
-   POST /api/institute/login
+   LOGIN (FINAL FIXED)
 ====================================== */
 router.post("/login", async (req, res) => {
   try {
@@ -111,13 +109,6 @@ router.post("/login", async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Invalid credentials"
-      });
-    }
-
-    if (!institute.password) {
-      return res.status(401).json({
-        success: false,
-        message: "Password not set. Please register again."
       });
     }
 
@@ -142,7 +133,12 @@ router.post("/login", async (req, res) => {
     return res.json({
       success: true,
       token,
-      uid: institute.uid,
+      institute: {
+        _id: institute._id,
+        name: institute.name,
+        email: institute.email,
+        city: institute.city
+      },
       role: "institute"
     });
 
@@ -162,10 +158,12 @@ router.get("/public", async (req, res) => {
   try {
     const filter = { isBlocked: false };
 
-    if (req.query.city) filter.city = req.query.city;
+    if (req.query.city) {
+      filter.city = req.query.city;
+    }
 
     const institutes = await Institute.find(filter).select(
-      "uid name city subjectsNeeded"
+      "_id name city subjectsNeeded"
     );
 
     return res.json({
@@ -183,23 +181,23 @@ router.get("/public", async (req, res) => {
 });
 
 /* ======================================
-   GET OWN PROFILE (Protected)
+   GET OWN PROFILE (PROTECTED)
 ====================================== */
 router.get(
-  "/profile/:uid",
+  "/profile/:id",
   verifyToken,
   requireRole("institute"),
   async (req, res) => {
     try {
 
-      if (req.user.uid !== req.params.uid) {
+      if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
           message: "Unauthorized"
         });
       }
 
-      const institute = await Institute.findOne({ uid: req.params.uid });
+      const institute = await Institute.findById(req.params.id);
 
       if (!institute) {
         return res.status(404).json({
