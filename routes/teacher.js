@@ -15,7 +15,7 @@ const requireRole = require("../middleware/requireRole");
 function generateToken(user) {
   return jwt.sign(
     {
-      uid: user.uid,
+      id: user._id,
       role: "teacher"
     },
     process.env.JWT_SECRET,
@@ -26,11 +26,12 @@ function generateToken(user) {
 }
 
 /* ======================================
-   REGISTER (EMAIL + PASSWORD)
+   REGISTER
    POST /api/teacher/create
 ====================================== */
 router.post("/create", async (req, res) => {
   try {
+
     const {
       email,
       password,
@@ -62,7 +63,7 @@ router.post("/create", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const teacher = new Teacher({
-      uid: "T" + Date.now(), // internal system UID
+      uid: "T" + Date.now(),
       email: email.toLowerCase(),
       password: hashedPassword,
       name,
@@ -81,7 +82,9 @@ router.post("/create", async (req, res) => {
     });
 
   } catch (err) {
+
     console.error("Teacher create error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error"
@@ -90,11 +93,12 @@ router.post("/create", async (req, res) => {
 });
 
 /* ======================================
-   LOGIN (EMAIL + PASSWORD)
+   LOGIN
    POST /api/teacher/login
 ====================================== */
 router.post("/login", async (req, res) => {
   try {
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -118,11 +122,14 @@ router.post("/login", async (req, res) => {
     if (!teacher.password) {
       return res.status(401).json({
         success: false,
-        message: "Password not set. Please register again."
+        message: "Password not set"
       });
     }
 
-    const isMatch = await bcrypt.compare(password, teacher.password);
+    const isMatch = await bcrypt.compare(
+      password,
+      teacher.password
+    );
 
     if (!isMatch) {
       return res.status(401).json({
@@ -143,12 +150,23 @@ router.post("/login", async (req, res) => {
     return res.json({
       success: true,
       token,
-      uid: teacher.uid,
+
+      // ✅ IMPORTANT FIX
+      teacher: {
+        _id: teacher._id,
+        name: teacher.name,
+        email: teacher.email,
+        subject: teacher.subject,
+        city: teacher.city
+      },
+
       role: "teacher"
     });
 
   } catch (err) {
+
     console.error("Teacher login error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error"
@@ -157,23 +175,28 @@ router.post("/login", async (req, res) => {
 });
 
 /* ======================================
-   SAVE / UPDATE RESUME (Protected)
+   SAVE / UPDATE RESUME
 ====================================== */
 router.post(
-  "/resume/:uid",
+  "/resume/:id",
   verifyToken,
   requireRole("teacher"),
   async (req, res) => {
+
     try {
 
-      if (req.user.uid !== req.params.uid) {
+      if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
           message: "Unauthorized"
         });
       }
 
-      const { about, education, skills } = req.body;
+      const {
+        about,
+        education,
+        skills
+      } = req.body;
 
       if (!about || !education || !skills) {
         return res.status(400).json({
@@ -182,7 +205,7 @@ router.post(
         });
       }
 
-      const teacher = await Teacher.findOne({ uid: req.params.uid });
+      const teacher = await Teacher.findById(req.params.id);
 
       if (!teacher) {
         return res.status(404).json({
@@ -193,6 +216,7 @@ router.post(
 
       teacher.about = about;
       teacher.education = education;
+
       teacher.skills = Array.isArray(skills)
         ? skills
         : String(skills)
@@ -208,7 +232,9 @@ router.post(
       });
 
     } catch (err) {
+
       console.error("Resume save error:", err);
+
       return res.status(500).json({
         success: false,
         message: "Server error"
@@ -218,17 +244,18 @@ router.post(
 );
 
 /* ======================================
-   UPLOAD RESUME PDF (Protected)
+   UPLOAD RESUME PDF
 ====================================== */
 router.post(
-  "/upload-resume/:uid",
+  "/upload-resume/:id",
   verifyToken,
   requireRole("teacher"),
   upload.single("resume"),
   async (req, res) => {
+
     try {
 
-      if (req.user.uid !== req.params.uid) {
+      if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
           message: "Unauthorized"
@@ -242,10 +269,11 @@ router.post(
         });
       }
 
-      const resumeUrl = `/uploads/${req.file.filename}`;
+      const resumeUrl =
+        `/uploads/${req.file.filename}`;
 
-      await Teacher.updateOne(
-        { uid: req.params.uid },
+      await Teacher.findByIdAndUpdate(
+        req.params.id,
         { resumeUrl }
       );
 
@@ -256,7 +284,9 @@ router.post(
       });
 
     } catch (err) {
+
       console.error("Resume upload error:", err);
+
       return res.status(500).json({
         success: false,
         message: "Upload failed"
@@ -266,23 +296,26 @@ router.post(
 );
 
 /* ======================================
-   GET TEACHER PROFILE (Protected)
+   GET PROFILE
 ====================================== */
 router.get(
-  "/:uid",
+  "/profile/:id",
   verifyToken,
   requireRole("teacher"),
   async (req, res) => {
+
     try {
 
-      if (req.user.uid !== req.params.uid) {
+      if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
           message: "Unauthorized"
         });
       }
 
-      const teacher = await Teacher.findOne({ uid: req.params.uid });
+      const teacher = await Teacher.findById(
+        req.params.id
+      );
 
       if (!teacher) {
         return res.status(404).json({
@@ -297,9 +330,12 @@ router.get(
       });
 
     } catch (err) {
+
       console.error("Get teacher error:", err);
+
       return res.status(500).json({
-        success: false
+        success: false,
+        message: "Server error"
       });
     }
   }
