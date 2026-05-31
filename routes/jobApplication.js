@@ -182,18 +182,23 @@ TEACHER APPLIED JOBS (Teacher Only)
 GET /api/job-application/teacher/:uid
 =================================================
 */
-router.get("/teacher/:uid", requireRole("teacher"), async (req, res) => {
+router.get("/teacher/:id", async (req, res) => {
   try {
-    const teacherUid = String(req.params.uid).trim();
 
-    if (req.user.uid !== teacherUid) {
-      return res.status(403).json({
+    const teacherId = req.params.id;
+
+    const teacher = await Teacher.findById(teacherId);
+
+    if (!teacher) {
+      return res.status(404).json({
         success: false,
-        message: "Unauthorized access"
+        message: "Teacher not found"
       });
     }
 
-    const applications = await JobApplication.find({ teacherUid })
+    const applications = await JobApplication.find({
+      teacherUid: teacher.uid
+    })
       .populate("jobId", "title subject city role")
       .lean();
 
@@ -203,13 +208,14 @@ router.get("/teacher/:uid", requireRole("teacher"), async (req, res) => {
     });
 
   } catch (err) {
+
     console.error("Teacher applications error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error"
     });
   }
 });
-
 
 module.exports = router;
