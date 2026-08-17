@@ -1,4 +1,5 @@
 console.log("🔥🔥 TEACHER ROUTES FILE LOADED");
+
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
@@ -10,12 +11,17 @@ const upload = require("../utils/uploadResume");
 const verifyToken = require("../middleware/verifyToken");
 const requireRole = require("../middleware/requireRole");
 
+/* ======================================
+   TEST ROUTE
+   GET /api/teacher/test
+====================================== */
 router.get("/test", (req, res) => {
   res.json({
     success: true,
     message: "Teacher routes are working"
   });
 });
+
 /* ======================================
    GENERATE JWT TOKEN
 ====================================== */
@@ -38,7 +44,6 @@ function generateToken(user) {
 ====================================== */
 router.post("/create", async (req, res) => {
   try {
-
     const {
       email,
       password,
@@ -89,7 +94,6 @@ router.post("/create", async (req, res) => {
     });
 
   } catch (err) {
-
     console.error("Teacher create error:", err);
 
     return res.status(500).json({
@@ -105,7 +109,6 @@ router.post("/create", async (req, res) => {
 ====================================== */
 router.post("/login", async (req, res) => {
   try {
-
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -158,7 +161,6 @@ router.post("/login", async (req, res) => {
       success: true,
       token,
 
-      // ✅ IMPORTANT FIX
       teacher: {
         _id: teacher._id,
         name: teacher.name,
@@ -171,7 +173,6 @@ router.post("/login", async (req, res) => {
     });
 
   } catch (err) {
-
     console.error("Teacher login error:", err);
 
     return res.status(500).json({
@@ -183,15 +184,14 @@ router.post("/login", async (req, res) => {
 
 /* ======================================
    SAVE / UPDATE RESUME
+   POST /api/teacher/resume/:id
 ====================================== */
 router.post(
   "/resume/:id",
   verifyToken,
   requireRole("teacher"),
   async (req, res) => {
-
     try {
-
       if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
@@ -239,7 +239,6 @@ router.post(
       });
 
     } catch (err) {
-
       console.error("Resume save error:", err);
 
       return res.status(500).json({
@@ -252,6 +251,7 @@ router.post(
 
 /* ======================================
    UPLOAD RESUME PDF
+   POST /api/teacher/upload-resume/:id
 ====================================== */
 router.post(
   "/upload-resume/:id",
@@ -259,9 +259,7 @@ router.post(
   requireRole("teacher"),
   upload.single("resume"),
   async (req, res) => {
-
     try {
-
       if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
@@ -291,7 +289,6 @@ router.post(
       });
 
     } catch (err) {
-
       console.error("Resume upload error:", err);
 
       return res.status(500).json({
@@ -303,16 +300,16 @@ router.post(
 );
 
 /* ======================================
-   GET PROFILE
+   PRIVATE TEACHER PROFILE
+   GET /api/teacher/profile/:id
+   LOGIN REQUIRED
 ====================================== */
 router.get(
   "/profile/:id",
   verifyToken,
   requireRole("teacher"),
   async (req, res) => {
-
     try {
-
       if (req.user.id !== req.params.id) {
         return res.status(403).json({
           success: false,
@@ -337,7 +334,6 @@ router.get(
       });
 
     } catch (err) {
-
       console.error("Get teacher error:", err);
 
       return res.status(500).json({
@@ -347,5 +343,41 @@ router.get(
     }
   }
 );
+
+/* ======================================
+   PUBLIC TEACHER PROFILE
+   GET /api/teacher/:uid
+   NO LOGIN REQUIRED
+====================================== */
+router.get("/:uid", async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({
+      uid: req.params.uid,
+      isBlocked: false
+    }).select(
+      "uid name subject city experience role verificationStatus resumeUrl"
+    );
+
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      teacher
+    });
+
+  } catch (err) {
+    console.error("Public teacher profile error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+});
 
 module.exports = router;
