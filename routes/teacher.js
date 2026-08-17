@@ -1,3 +1,4 @@
+console.log("🔥🔥 TEACHER ROUTES FILE LOADED");
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
