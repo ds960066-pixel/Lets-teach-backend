@@ -10,6 +10,12 @@ const upload = require("../utils/uploadResume");
 const verifyToken = require("../middleware/verifyToken");
 const requireRole = require("../middleware/requireRole");
 
+router.get("/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Teacher routes are working"
+  });
+});
 /* ======================================
    GENERATE JWT TOKEN
 ====================================== */
