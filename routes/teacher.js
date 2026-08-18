@@ -252,6 +252,7 @@ router.post(
 /* ======================================
    UPLOAD RESUME PDF
    POST /api/teacher/upload-resume/:id
+   CLOUDINARY STORAGE
 ====================================== */
 router.post(
   "/upload-resume/:id",
@@ -274,8 +275,10 @@ router.post(
         });
       }
 
-      const resumeUrl =
-        `/uploads/${req.file.filename}`;
+      /* ==================================
+         CLOUDINARY PERMANENT URL
+      ================================== */
+      const resumeUrl = req.file.path;
 
       await Teacher.findByIdAndUpdate(
         req.params.id,
