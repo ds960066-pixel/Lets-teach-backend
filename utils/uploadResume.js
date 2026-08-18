@@ -1,34 +1,31 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../config/cloudinary");
 
-/* ================= ENSURE UPLOADS FOLDER ================= */
-const uploadDir = path.join(process.cwd(), "uploads");
+/* ================= CLOUDINARY STORAGE ================= */
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-/* ================= STORAGE ================= */
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const uid = req.params.uid || "unknown";
-    cb(null, `resume_${uid}_${Date.now()}${ext}`);
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "lets-teach/resumes",
+    resource_type: "raw",
+    allowed_formats: ["pdf"]
   }
 });
 
-/* ================= FILE FILTER ================= */
+/* ================= MULTER ================= */
+
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  },
+
   fileFilter(req, file, cb) {
     if (file.mimetype !== "application/pdf") {
       return cb(new Error("Only PDF allowed"));
     }
+
     cb(null, true);
   }
 });
